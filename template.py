@@ -13,7 +13,7 @@ def read_input() -> Input:
 
 
 def solve(input_: Input) -> Any:
-    pass
+    return input_  # TODO
 
 
 def main():
