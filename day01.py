@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 from pprint import pprint
-from typing import Any
 
 Input = list[str]
 
@@ -17,7 +16,7 @@ def read_input() -> Input:
         ]
 
 
-def solve1(input_: Input) -> Any:
+def solve1(input_: Input) -> int:
     total = 0
     for line in input_:
         first = re.search(r"\d", line).group(0)
@@ -46,7 +45,7 @@ def to_digit(num: str) -> str:
     return DIGITS_BY_NAME[num]
 
 
-def solve2(input_: Input) -> Any:
+def solve2(input_: Input) -> int:
     union_digit_names = "|".join(DIGITS_BY_NAME.keys())
     re_digits_forward = re.compile(f"\\d|{union_digit_names}")
     re_digits_backward = re.compile(f"\\d|{union_digit_names[::-1]}")
