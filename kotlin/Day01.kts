@@ -8,6 +8,8 @@ val inputFilePath = "input.txt"
 
 
 fun readInput(): Input = File(inputFilePath).readLines()
+    .map { it.trim() }
+    .filter { it.isNotEmpty() }
 
 
 fun solve1(input: Input): Int {
