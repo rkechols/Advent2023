@@ -47,8 +47,8 @@ def to_digit(num: str) -> str:
 
 def solve2(input_: Input) -> int:
     union_digit_names = "|".join(DIGITS_BY_NAME.keys())
-    re_digits_forward = re.compile(f"\\d|{union_digit_names}")
-    re_digits_backward = re.compile(f"\\d|{union_digit_names[::-1]}")
+    re_digits_forward = re.compile(fr"\d|{union_digit_names}")
+    re_digits_backward = re.compile(fr"\d|{union_digit_names[::-1]}")
     total = 0
     for line in input_:
         first = re_digits_forward.search(line).group(0)
