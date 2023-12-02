@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 from pprint import pprint
 
-Input = dict[int, list[dict[str, int]]]
+Input = dict[int, list[tuple[str, int]]]
 
 INPUT_FILE_PATH = Path("input.txt")
 
@@ -13,6 +13,9 @@ COLOR_MAXES = {
     "green": 13,
     "blue": 14,
 }
+COLORS = set(COLOR_MAXES.keys())
+
+RE_COLOR_COUNT = re.compile(fr"(\d+)\s+({'|'.join(COLORS)})")
 
 
 def read_input() -> Input:
@@ -24,38 +27,35 @@ def read_input() -> Input:
                 continue
             match = re.match(r"Game (\d+):", line)
             game_num = int(match.group(1))
-            pulls_raw = line[match.end():].split(";")
-            pulls = []
-            for pull in pulls_raw:
-                counts = defaultdict(int)
-                for color in COLOR_MAXES.keys():
-                    if (match := re.search(f"(\\d+) {color}", pull)) is not None:
-                        counts[color] = int(match.group(1))
-                pulls.append(counts)
+            pulls = re.split("[,;]", line[match.end():])
+            pulls = [
+                (match.group(2), int(match.group(1)))
+                for pull in pulls
+                if (match := RE_COLOR_COUNT.search(pull)) is not None
+            ]
             data[game_num] = pulls
     return data
 
 
 def solve1(input_: Input) -> int:
-    good_game_nums = set()
-    for game_num, pulls in input_.items():
+    return sum(
+        game_num
+        for game_num, pulls in input_.items()
         if all(
-            all(pull[color] <= count_max for color, count_max in COLOR_MAXES.items())
-            for pull in pulls
-        ):
-            good_game_nums.add(game_num)
-    return sum(good_game_nums)
+            count <= COLOR_MAXES[color]
+            for color, count in pulls
+        )
+    )
 
 
 def solve2(input_: Input) -> int:
     total_power = 0
-    for game_num, pulls in input_.items():
+    for pulls in input_.values():
         biggest_seen = defaultdict(int)
-        for pull in pulls:
-            for color, count in pull.items():
-                best_prev = biggest_seen[color]
-                biggest_seen[color] = max(best_prev, count)
-        power = math.prod((biggest_seen[color] for color in COLOR_MAXES))
+        for color, count in pulls:
+            best_prev = biggest_seen[color]
+            biggest_seen[color] = max(best_prev, count)
+        power = math.prod((biggest_seen[color] for color in COLORS))
         total_power += power
     return total_power
 
