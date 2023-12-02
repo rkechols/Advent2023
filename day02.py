@@ -1,8 +1,8 @@
-from pathlib import Path
-from collections import defaultdict
+import math
 import re
+from collections import defaultdict
+from pathlib import Path
 from pprint import pprint
-from typing import Any
 
 Input = dict[int, list[dict[str, int]]]
 
@@ -36,7 +36,7 @@ def read_input() -> Input:
     return data
 
 
-def solve(input_: Input) -> Any:
+def solve1(input_: Input) -> int:
     good_game_nums = set()
     for game_num, pulls in input_.items():
         if all(
@@ -47,9 +47,24 @@ def solve(input_: Input) -> Any:
     return sum(good_game_nums)
 
 
+def solve2(input_: Input) -> int:
+    total_power = 0
+    for game_num, pulls in input_.items():
+        biggest_seen = defaultdict(int)
+        for pull in pulls:
+            for color, count in pull.items():
+                best_prev = biggest_seen[color]
+                biggest_seen[color] = max(best_prev, count)
+        power = math.prod((biggest_seen[color] for color in COLOR_MAXES))
+        total_power += power
+    return total_power
+
+
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_)
     pprint(answer)
 
 
