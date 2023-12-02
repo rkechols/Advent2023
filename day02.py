@@ -60,6 +60,23 @@ def solve2(input_: Input) -> int:
     return total_power
 
 
+# def solve2(input_: Input) -> int:
+#     return sum(
+#         math.prod(
+#             max(
+#                 (
+#                     count
+#                     for color, count in pulls
+#                     if color == target_color
+#                 ),
+#                 default=0,
+#             )
+#             for target_color in COLORS
+#         )
+#         for pulls in input_.values()
+#     )
+
+
 def main():
     input_ = read_input()
     answer = solve1(input_)
