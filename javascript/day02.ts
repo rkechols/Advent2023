@@ -46,10 +46,28 @@ function solve1(input: Input): number {
 }
 
 
+function solve2(input: Input): number {
+    let totalPower = 0;
+    for (const pulls of input.values()) {
+        const biggestSeen = new Map<string, number>();
+        for (const [color, count] of pulls) {
+            const best_prev = biggestSeen.get(color) || 0;
+            biggestSeen.set(color, Math.max(best_prev, count));
+        }
+        const power = COLORS.map(color => biggestSeen.get(color) || 0)
+            .reduce((prod, num) => prod * num);
+        totalPower += power;
+    }
+    return totalPower;
+}
+
+
 function main() {
     const input = readInput();
-    const answer = solve1(input);
-    console.log(answer);
+    const answer1 = solve1(input);
+    console.log(answer1);
+    const answer2 = solve2(input);
+    console.log(answer2);
 }
 
 
