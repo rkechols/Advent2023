@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import { stringify } from "querystring";
 
 type Pair<T, U> = [T, U];
 type Input = Map<number, Array<Pair<string, number>>>;
@@ -60,6 +59,19 @@ function solve2(input: Input): number {
     }
     return totalPower;
 }
+
+
+// function solve2(input: Input): number {
+//     return Array.from(input.values())
+//         .map(
+//             pulls => COLORS.map(
+//                 targetColor => pulls.filter(
+//                     ([color, _]) => color == targetColor
+//                 ).map(([_, count]) => count)
+//                 .reduce((biggest, num) => Math.max(biggest, num), 0)
+//             ).reduce((prod, num) => prod * num)
+//         ).reduce((total, num) => total + num);
+// }
 
 
 function main() {
