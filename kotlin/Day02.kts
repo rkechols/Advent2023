@@ -1,6 +1,7 @@
 #!/usr/bin/env kotlin
 
 import java.io.File
+import kotlin.math.max
 
 typealias Input = Map<Int, List<Pair<String, Int>>>
 
@@ -36,7 +37,7 @@ fun readInput(): Input {
 }
 
 
-fun solve(input: Input): Int {
+fun solve1(input: Input): Int {
     return input.filter {
         (_, pulls) -> pulls.all {
             (color, count) -> count <= colorMaxes[color]!!
@@ -45,7 +46,24 @@ fun solve(input: Input): Int {
 }
 
 
+fun solve2(input: Input): Int {
+    var totalPower = 0
+    for (pulls in input.values) {
+        val biggestSeen = HashMap<String, Int>().withDefault { 0 }
+        for ((color, count) in pulls) {
+            val bestPrev = biggestSeen.getValue(color)
+            biggestSeen[color] = max(bestPrev, count)
+        }
+        val power = colors.map { color -> biggestSeen.getValue(color) }.reduce(Int::times)
+        totalPower += power
+    }
+    return totalPower
+}
+
+
 // main
 val input = readInput()
-val answer = solve(input)
-println(answer)
+val answer1 = solve1(input)
+println(answer1)
+val answer2 = solve2(input)
+println(answer2)
