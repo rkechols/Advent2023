@@ -1,6 +1,6 @@
 from pathlib import Path
 from pprint import pprint
-from typing import Any
+import numpy as np
 
 Input = list[tuple[list[int], list[int]]]
 
@@ -19,10 +19,7 @@ def solve1(input_: Input) -> int:
     total = 0
     for winning, yours in input_:
         winning = set(winning)
-        count = 0
-        for num in yours:
-            if num in winning:
-                count += 1
+        count = sum(num in winning for num in yours)
         if count == 0:
             score = 0
         else:
@@ -32,18 +29,12 @@ def solve1(input_: Input) -> int:
 
 
 def solve2(input_: Input) -> int:
-    n = len(input_)
-    n_copies = [1 for _ in range(n)]
+    n_copies = np.ones(len(input_), dtype=int)
     for i, (winning, yours) in enumerate(input_):
         winning = set(winning)
-        count = 0
-        for num in yours:
-            if num in winning:
-                count += 1
-        n_copies_this = n_copies[i]
-        for j in range(i + 1, min(i + count + 1, n)):
-            n_copies[j] += n_copies_this
-    return sum(n_copies)
+        count = sum(num in winning for num in yours)
+        n_copies[(i + 1):(i + count + 1)] += n_copies[i]
+    return n_copies.sum()
 
 
 def main():
