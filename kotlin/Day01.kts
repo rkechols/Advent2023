@@ -8,8 +8,8 @@ val inputFilePath = "input.txt"
 
 
 fun readInput(): Input = File(inputFilePath).readLines()
-    .map { it.trim() }
-    .filter { it.isNotEmpty() }
+    .map { line -> line.trim() }
+    .filter { line -> line.isNotEmpty() }
 
 
 fun solve1(input: Input): Int {
@@ -39,7 +39,7 @@ val digitsByName = mapOf(
 
 
 fun toDigit(num: String): String {
-    if (num.all { it.isDigit() }) {
+    if (num.all { char -> char.isDigit() }) {
         return num
     }
     return digitsByName[num]!!
