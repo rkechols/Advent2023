@@ -5,6 +5,7 @@ from typing import Sequence
 import numpy as np
 
 EMPTY = "."
+GEAR = "*"
 
 Input = list[list[str]]
 
@@ -58,7 +59,7 @@ class Solver:
         # nothing found
         return False
 
-    def solve(self) -> int:
+    def solve1(self) -> int:
         data = self.input.copy()
         total = 0
         for r in range(data.shape[0]):
@@ -72,11 +73,43 @@ class Solver:
                     data[r, c:c + n_digits] = EMPTY
         return total
 
+    def _collect_adjacent_numbers(self, r: int, c: int) -> list[int]:
+        data = self.input.copy()
+        adjacent_numbers = []
+        for r_shift in (-1, 0, 1):
+            new_r = r + r_shift
+            for c_shift in (-1, 0, 1):  # order is important
+                if r_shift == 0 and c_shift == 0:
+                    continue
+                new_c = c + c_shift
+                if data[new_r, new_c].isdigit():
+                    c_start = new_c
+                    while c_start > 0 and data[new_r, c_start - 1].isdigit():
+                        c_start -= 1
+                    n_digits = _count_digits(data[new_r, c_start:])
+                    num = int("".join(data[new_r, c_start:c_start + n_digits]))
+                    adjacent_numbers.append(num)
+                    data[new_r, c_start:c_start + n_digits] = EMPTY
+        return adjacent_numbers
+
+    def solve2(self) -> int:
+        total = 0
+        for r in range(self.input.shape[0]):
+            for c in range(self.input.shape[1]):
+                if self.input[r, c] == GEAR:
+                    adjacent_numbers = self._collect_adjacent_numbers(r, c)
+                    if len(adjacent_numbers) == 2:
+                        gear_ratio = adjacent_numbers[0] * adjacent_numbers[1]
+                        total += gear_ratio
+        return total
+
 
 def main():
     input_ = read_input()
     solver = Solver(input_)
-    answer = solver.solve()
+    answer = solver.solve1()
+    pprint(answer)
+    answer = solver.solve2()
     pprint(answer)
 
 
