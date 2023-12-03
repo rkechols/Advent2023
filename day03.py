@@ -1,8 +1,8 @@
-import copy
-import numpy as np
 from pathlib import Path
 from pprint import pprint
-from typing import Any, Sequence
+from typing import Sequence
+
+import numpy as np
 
 EMPTY = "."
 
@@ -61,19 +61,14 @@ class Solver:
     def solve(self) -> int:
         data = self.input.copy()
         total = 0
-        kept = []
-        rejected = []
         for r in range(data.shape[0]):
             for c in range(data.shape[1]):
                 s: str = data[r, c]
                 if s.isdigit():
                     n_digits = _count_digits(data[r, c:])
-                    num = int("".join(data[r, c:c + n_digits]))
                     if self._has_symbol_neighbor(r, c, n_digits):
+                        num = int("".join(data[r, c:c + n_digits]))
                         total += num
-                        kept.append(num)
-                    else:
-                        rejected.append(num)
                     data[r, c:c + n_digits] = EMPTY
         return total
 
