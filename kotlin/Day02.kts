@@ -37,13 +37,12 @@ fun readInput(): Input {
 }
 
 
-fun solve1(input: Input): Int {
-    return input.filter {
+fun solve1(input: Input): Int =
+    input.filter {
         (_, pulls) -> pulls.all {
             (color, count) -> count <= colorMaxes[color]!!
         }
     }.map { (gameNum, _) -> gameNum }.sum()
-}
 
 
 fun solve2(input: Input): Int {
@@ -59,6 +58,16 @@ fun solve2(input: Input): Int {
     }
     return totalPower
 }
+
+
+//fun solve2(input: Input): Int =
+//    input.values.sumOf {
+//        pulls -> colors.map {
+//            targetColor -> pulls.filter {
+//                (color, _) -> color == targetColor
+//            }.maxOfOrNull { (_, count) -> count } ?: 0
+//        }.reduce(Int::times)
+//    }
 
 
 // main
