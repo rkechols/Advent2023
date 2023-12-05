@@ -36,12 +36,12 @@ def read_input() -> Input:
     for section in sections[1:]:
         lines = section.split("\n")
         name = lines[0].strip()
-        ranges = [
+        range_transforms = [
             RangeTransform(*map(int, line.split()))
             for line in lines[1:]
-            if line.strip()
+            if line.strip() != ""
         ]
-        maps.append(Map(name=name, range_transforms=ranges))
+        maps.append(Map(name=name, range_transforms=range_transforms))
     return Input(seeds=seeds, maps=maps)
 
 
