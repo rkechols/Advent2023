@@ -2,17 +2,29 @@ import bisect
 import re
 from pathlib import Path
 from pprint import pprint
-from typing import Optional
-
-Input = tuple[
-    list[int],
-    list[tuple[
-        str,
-        list[tuple[int, int, int]],
-    ]],
-]
+from typing import NamedTuple, Optional
+from dataclasses import dataclass
 
 INPUT_FILE_PATH = Path("input.txt")
+
+
+RangeTransform = NamedTuple("RangeTransform", [
+    ("start_out", int),
+    ("start_in", int),
+    ("n", int),
+])
+
+
+@dataclass
+class Map:
+    name: str
+    ranges: list[RangeTransform]
+
+
+@dataclass
+class Input:
+    seeds: list[int]
+    maps: list[Map]
 
 
 def read_input() -> Input:
@@ -25,22 +37,21 @@ def read_input() -> Input:
         lines = section.split("\n")
         name = lines[0].strip()
         ranges = [
-            tuple(map(int, line.split()))
+            RangeTransform(*map(int, line.split()))
             for line in lines[1:]
             if line.strip()
         ]
-        maps.append((name, ranges))
-    return seeds, maps
+        maps.append(Map(name=name, ranges=ranges))
+    return Input(seeds=seeds, maps=maps)
 
 
 def solve1(input_: Input) -> int:
-    seeds, maps = input_
-    current_nums = set(seeds)
-    for _, map_ in maps:
+    current_nums = set(input_.seeds)
+    for map_ in input_.maps:
         new_nums = set()
-        for start_out, start_in, n in map_:
-            range_in = range(start_in, start_in + n)
-            shift = start_out - start_in
+        for r in map_.ranges:
+            range_in = range(r.start_in, r.start_in + r.n)
+            shift = r.start_out - r.start_in
             to_discard = set()
             for num in current_nums:
                 if num in range_in:
@@ -99,16 +110,15 @@ def _range_overlap(r_query: tuple[int, int], r_key: tuple[int, int]) -> tuple[
 
 
 def solve2(input_: Input) -> int:
-    seeds, maps = input_
     input_ranges = _simplify_ranges(sorted(
         (start, start + n - 1)
-        for start, n in zip(seeds[::2], seeds[1::2])
+        for start, n in zip(input_.seeds[::2], input_.seeds[1::2])
     ))
-    for _, map_ in maps:
+    for map_ in input_.maps:
         output_ranges = []
-        for start_out, start_in, n in map_:
-            transform_range = (start_in, start_in + n - 1)
-            shift = start_out - start_in
+        for r in map_.ranges:
+            transform_range = (r.start_in, r.start_in + r.n - 1)
+            shift = r.start_out - r.start_in
             i = 0
             while i < len(input_ranges):
                 input_range = input_ranges[i]
