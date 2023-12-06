@@ -158,7 +158,9 @@ def _count_ways_to_win(time_total: int, distance_to_beat: int) -> int:
     while _evaluate_race(time_total, t_high) == distance_to_beat and t_low < t_high:
         t_high -= 1
     if t_low == t_high:
+        # one singular t-value; check if it's a winner
         return int(_evaluate_race(time_total, t_low) > distance_to_beat)
+    # how many numbers are in the range?
     return 1 + t_high - t_low
 
 
