@@ -58,28 +58,36 @@ def solve1(input_: Input) -> int:
 #     )
 
 
-def _find_peak(t_min: int, t_max: int, *, t_total: int) -> int:
-    assert 0 <= t_min <= t_max <= t_total
-    n_to_test = 1 + t_max - t_min
-    if n_to_test == 1:
+def _find_peak(t_total: int) -> int:
+    """
+    Find the t-value that gets the highest distance.
+    Uses a binary search where the slope indicates what direction (lower/higher) to find the maximum
+    """
+    assert 0 <= t_total
+    # boundaries of the binary search, which close in on a solution
+    t_min = 0
+    t_max = t_total
+    # stop when our window is <4 wide, since we need 4 to have a min, 2 middles, and a max
+    while (n_to_test := 1 + t_max - t_min) >= 4:
+        t_center = (t_min + t_max) // 2
+        t_pre_center = t_center - 1
+        # check slope:
+        if _evaluate_race(t_total, t_pre_center) < _evaluate_race(t_total, t_center):
+            t_min = t_center  # peak is to the right of 'center'
+        else:
+            t_max = t_pre_center  # peak is to the left of 'center'
+    assert 0 < n_to_test < 4
+    # brute-force the last few options
+    if n_to_test == 1:  # not technically necessary; code below could actually still handle this case
         return t_min
-    if n_to_test < 4:
-        best_t = None
-        best_d = None
-        for t_hold in range(t_min, t_max + 1):
-            this_dist = _evaluate_race(t_total, t_hold)
-            if best_t is None or this_dist > best_d:
-                best_t = t_hold
-                best_d = this_dist
-        return best_t
-    # n_to_test >= 4:
-    t_center = (t_min + t_max) // 2
-    t_pre_center = t_center - 1
-    if _evaluate_race(t_total, t_pre_center) < _evaluate_race(t_total, t_center):
-        # peak is to the right
-        return _find_peak(t_center, t_max, t_total=t_total)
-    # else:  # peak is to the left
-    return _find_peak(t_min, t_pre_center, t_total=t_total)
+    best_t = None
+    best_d = None
+    for t_hold in range(t_min, t_max + 1):
+        this_dist = _evaluate_race(t_total, t_hold)
+        if best_t is None or this_dist > best_d:
+            best_t = t_hold
+            best_d = this_dist
+    return best_t
 
 
 def _binary_search(t_min: int, t_max: int, *, t_total: int, d_target: int, reverse: bool) -> int:
@@ -114,7 +122,7 @@ def _binary_search(t_min: int, t_max: int, *, t_total: int, d_target: int, rever
 
 
 def _count_ways_to_win(time_total: int, distance_to_beat: int) -> int:
-    t_best_possible = _find_peak(0, time_total, t_total=time_total)
+    t_best_possible = _find_peak(time_total)
     if _evaluate_race(time_total, t_best_possible) <= distance_to_beat:
         return 0
     # binary searches to find the t-values that get the target d
