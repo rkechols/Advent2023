@@ -65,54 +65,82 @@ def _find_peak(t_total: int) -> int:
     """
     assert 0 <= t_total
     # boundaries of the binary search, which close in on a solution
-    t_min = 0
-    t_max = t_total
-    # stop when our window is <4 wide, since we need 4 to have a min, 2 middles, and a max
-    while (n_to_test := 1 + t_max - t_min) >= 4:
-        t_center = (t_min + t_max) // 2
+    t_left = 0
+    t_right = t_total
+    # stop when our window is <4 wide, since we need 4 to have a left, 2 centers, and a right
+    while (n_to_test := 1 + t_right - t_left) >= 4:
+        t_center = (t_left + t_right) // 2
         t_pre_center = t_center - 1
         # check slope:
         if _evaluate_race(t_total, t_pre_center) < _evaluate_race(t_total, t_center):
-            t_min = t_center  # peak is to the right of 'center'
+            t_left = t_center  # peak is to the right of 'center'
         else:
-            t_max = t_pre_center  # peak is to the left of 'center'
+            t_right = t_pre_center  # peak is to the left of 'center'
     assert 0 < n_to_test < 4
     # brute-force the last few options
     return max(
-        range(t_min, t_max + 1),
+        range(t_left, t_right + 1),
         key=lambda t_hold: _evaluate_race(t_total, t_hold)
     )
 
 
-def _binary_search(t_min: int, t_max: int, *, t_total: int, d_target: int, reverse: bool) -> int:
-    assert 0 <= t_min <= t_max <= t_total
-    d_start = _evaluate_race(t_total, t_min)
-    if d_start == d_target:
-        return t_min
-    d_end = _evaluate_race(t_total, t_max)
-    if d_end == d_target:
-        return t_max
-    if t_min + 1 == t_max:
-        if not reverse and (d_start < d_target < d_end):
-            return t_max
-        elif reverse and (d_end < d_target < d_start):
-            return t_min
-    if d_start == d_end and d_start != d_target:
-        raise ValueError("search edges are equal to each other, but not equal to the target")
-    assert (d_start < d_end) == (not reverse)
-    if (d_start < d_end and not (d_start <= d_target <= d_end)) or \
-            (d_end < d_start and not (d_end <= d_target <= d_start)):
-        raise ValueError("impossible search")
-    t_center = (t_min + t_max) // 2
-    d_center = _evaluate_race(t_total, t_center)
-    if d_center == d_target:
-        return t_center
-    if (d_target < d_center and not reverse) or (d_center < d_target and reverse):
-        return _binary_search(t_min, t_center, t_total=t_total, d_target=d_target, reverse=reverse)
-    elif (d_target < d_center and reverse) or (d_center < d_target and not reverse):
-        return _binary_search(t_center, t_max, t_total=t_total, d_target=d_target, reverse=reverse)
-    else:
-        raise RuntimeError("bad code 😅")
+def _find_target_distance(t_left: int, t_right: int, t_total: int, d_target: int, *, reverse: bool) -> int:
+    """
+    Find the t-value that gets distance equal to `d_target`.
+    If `d_target` cannot be produced exactly, return the nearest t-value that
+    produces a distance just greater than `d_target`
+    Uses a binary search based on the distance yielded from each t-value;
+    this requires the assumption that the distances produced by a sequence of t-values are monotonic.
+    If increasing t-values yield monotonic *increasing* distances, use `reverse=False`.
+    If increasing t-values yield monotonic *decreasing* distances, use `reverse=True`.
+    """
+    assert 0 <= t_left <= t_right <= t_total
+    # check that the target value isn't out of range
+    if (
+        (not reverse and _evaluate_race(t_total, t_right) < d_target)
+        or (reverse and d_target > _evaluate_race(t_total, t_left))
+    ):
+        raise ValueError("search error: target value is out of range")
+    # actually do the search
+    while True:
+        # calculate d values at boundaries
+        d_left = _evaluate_race(t_total, t_left)
+        if (
+            d_left == d_target  # bullseye
+            or (not reverse and d_target < d_left)  # target is already below our search range
+        ):
+            return t_left
+        d_right = _evaluate_race(t_total, t_right)
+        if (
+            d_right == d_target  # bullseye
+            or (reverse and d_right > d_target)  # target is already below our search range
+        ):
+            return t_right
+        # double check monotonic-ness
+        if (
+            d_left == d_right
+            or (not reverse and d_left > d_right)
+            or (reverse and d_left < d_right)
+        ):
+            raise ValueError("search error: values seem to not be monotonic in the specified direction")
+        # base case: boundaries are adjacent t-values
+        if t_left + 1 == t_right:
+            # target must be between the last two options
+            if not reverse:
+                return t_right  # right side is the one barely over the target
+            else:
+                return t_left  # left side is the one barely over the target
+        # get the center value and
+        t_center = (t_left + t_right) // 2
+        d_center = _evaluate_race(t_total, t_center)
+        if d_center == d_target:  # bullseye
+            return t_center
+        if (not reverse and d_target < d_center) or (reverse and d_target > d_center):
+            t_right = t_center  # target is to the left of 'center'
+        elif (not reverse and d_center < d_target) or (reverse and d_center > d_target):
+            t_left = t_center  # target is to the right of 'center'
+        else:
+            raise RuntimeError
 
 
 def _count_ways_to_win(time_total: int, distance_to_beat: int) -> int:
@@ -120,9 +148,9 @@ def _count_ways_to_win(time_total: int, distance_to_beat: int) -> int:
     if _evaluate_race(time_total, t_best_possible) <= distance_to_beat:
         return 0
     # binary searches to find the t-values that get the target d
-    t_low = _binary_search(0, t_best_possible, t_total=time_total, d_target=distance_to_beat, reverse=False)
+    t_low = _find_target_distance(0, t_best_possible, time_total, distance_to_beat, reverse=False)
     assert _evaluate_race(time_total, t_low) >= distance_to_beat
-    t_high = _binary_search(t_best_possible, time_total, t_total=time_total, d_target=distance_to_beat, reverse=True)
+    t_high = _find_target_distance(t_best_possible, time_total, time_total, distance_to_beat, reverse=True)
     assert _evaluate_race(time_total, t_high) >= distance_to_beat
     # trim boundaries inward
     while _evaluate_race(time_total, t_low) == distance_to_beat and t_low < t_high:
