@@ -51,7 +51,7 @@ def solve1(input_: Input) -> int:
 
 
 # def solve1(input_: Input) -> int:
-#     # not so naïve solution
+#     # not-so-naïve solution
 #     return math.prod(
 #         _count_ways_to_win(time_total, distance_to_beat)
 #         for time_total, distance_to_beat in input_
