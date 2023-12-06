@@ -78,16 +78,10 @@ def _find_peak(t_total: int) -> int:
             t_max = t_pre_center  # peak is to the left of 'center'
     assert 0 < n_to_test < 4
     # brute-force the last few options
-    if n_to_test == 1:  # not technically necessary; code below could actually still handle this case
-        return t_min
-    best_t = None
-    best_d = None
-    for t_hold in range(t_min, t_max + 1):
-        this_dist = _evaluate_race(t_total, t_hold)
-        if best_t is None or this_dist > best_d:
-            best_t = t_hold
-            best_d = this_dist
-    return best_t
+    return max(
+        range(t_min, t_max + 1),
+        key=lambda t_hold: _evaluate_race(t_total, t_hold)
+    )
 
 
 def _binary_search(t_min: int, t_max: int, *, t_total: int, d_target: int, reverse: bool) -> int:
