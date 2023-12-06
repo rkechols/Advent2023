@@ -13,8 +13,8 @@ def read_input() -> Input:
     with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
         times = f.readline()
         distances_to_beat = f.readline()
-    times = list(map(int, re.findall(r"\d+", times)))
-    distances_to_beat = list(map(int, re.findall(r"\d+", distances_to_beat)))
+    times = map(int, re.findall(r"\d+", times))
+    distances_to_beat = map(int, re.findall(r"\d+", distances_to_beat))
     return list(zip(times, distances_to_beat))
 
 
@@ -28,25 +28,34 @@ def _evaluate_race(time_total: int, time_held: int) -> int:
 
 
 def solve1(input_: Input) -> int:
-    ways = []
+    n_ways_per_race = []
     for time_total, distance_to_beat in input_:
         for time_held in range(1, time_total):
             result = _evaluate_race(time_total, time_held)
             if result > distance_to_beat:
                 min_hold = time_held
                 break
-        else:
-            ways.append(0)
+        else:  # not possible to beat `distance_to_beat`
+            n_ways_per_race.append(0)
             continue
-        for time_held in range(time_total - 1, 0, -1):
+        for time_held in range(time_total - 1, min_hold, -1):
             result = _evaluate_race(time_total, time_held)
             if result > distance_to_beat:
                 max_hold = time_held
                 break
-        else:
-            raise RuntimeError(f"{time_total=} | {distance_to_beat=}")
-        ways.append(1 + max_hold - min_hold)
-    return math.prod(ways)
+        else:  # `min_hold` is the only way to beat `distance_to_beat`
+            max_hold = min_hold
+        n_ways = 1 + max_hold - min_hold
+        n_ways_per_race.append(n_ways)
+    return math.prod(n_ways_per_race)
+
+
+# def solve1(input_: Input) -> int:
+#     # not so naïve solution
+#     return math.prod(
+#         _count_ways_to_win(time_total, distance_to_beat)
+#         for time_total, distance_to_beat in input_
+#     )
 
 
 def _find_peak(t_min: int, t_max: int, *, t_total: int) -> int:
