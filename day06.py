@@ -44,7 +44,8 @@ def solve1(input_: Input) -> int:
                 max_hold = time_held
                 break
         else:  # `min_hold` is the only way to beat `distance_to_beat`
-            max_hold = min_hold
+            n_ways_per_race.append(1)
+            continue
         n_ways = 1 + max_hold - min_hold
         n_ways_per_race.append(n_ways)
     return math.prod(n_ways_per_race)
