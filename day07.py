@@ -10,6 +10,7 @@ INPUT_FILE_PATH = Path("input.txt")
 
 
 class HandType(Enum):
+    # numeric values represent the relative values of the hand types
     FIVE = 7
     FOUR = 6
     FULL_HOUSE = 5
@@ -19,157 +20,129 @@ class HandType(Enum):
     HIGH_CARD = 1
 
     @classmethod
-    def from_hand1(cls, hand: str) -> "HandType":
+    def from_hand(cls, hand: str) -> "HandType":
         assert len(hand) == 5
         counter = Counter(hand)
         counts = sorted(counter.values())
         match counts:
             case [5]:  # yahtzee!
-                return HandType.FIVE
+                return cls.FIVE
             case [1, 4]:
-                return HandType.FOUR
+                return cls.FOUR
             case [2, 3]:
-                return HandType.FULL_HOUSE
+                return cls.FULL_HOUSE
             case [1, 1, 3]:
-                return HandType.THREE
+                return cls.THREE
             case [1, 2, 2]:
-                return HandType.TWO_PAIR
+                return cls.TWO_PAIR
             case [1, 1, 1, 2]:
-                return HandType.ONE_PAIR
-            case [1, 1, 1, 1, 1]:
-                return HandType.HIGH_CARD
+                return cls.ONE_PAIR
+            case [1, 1, 1, 1, 1]:  # good luck with that
+                return cls.HIGH_CARD
             case _:
-                raise ValueError(counter)
+                raise ValueError(f"{counter=}")
 
     @classmethod
-    def from_hand2(cls, hand: str) -> "HandType":
+    def from_hand_with_jokers(cls, hand: str) -> "HandType":
         assert len(hand) == 5
         if "J" not in hand:  # no jokers; sort it out the normal way
-            return cls.from_hand1(hand)
+            return cls.from_hand(hand)
         counter = Counter(hand)
         n_jokers = counter.pop("J")
         if len(counter) <= 1:  # all actual cards are the same; match the jokers to them
-            return HandType.FIVE  # yahtzee!
-        if n_jokers == 3:  # 2 actual cards; they don't match
-            return HandType.FOUR
+            # note that this case catches when there are 5 or 4 jokers
+            return cls.FIVE  # yahtzee!
+        if n_jokers == 3:  # 2 actual cards (they don't match)
+            return cls.FOUR
         counts = sorted(counter.values())
-        if n_jokers == 2:  # 3 actual cards; not all the same
+        if n_jokers == 2:  # 3 actual cards (they don't all match)
             match counts:
-                case [1, 1, 1]:  # both jokers go with any (better than splitting to get 2-pair)
-                    return HandType.THREE
-                case [1, 2]:  # jokers go with the pair
-                    return HandType.FOUR
+                case [1, 1, 1]:
+                    return cls.THREE
+                case [1, 2]:
+                    return cls.FOUR
                 case _:
-                    raise ValueError(counts)
-        # 4 actual cards; not all the same
-        assert n_jokers == 1
+                    raise ValueError(f"{counter=}")
+        assert n_jokers == 1  # 4 actual cards (they don't all match)
         match counts:
-            case [1, 3]:  # joker goes with the triple
-                return HandType.FOUR
+            case [1, 3]:
+                return cls.FOUR
             case [2, 2]:
-                return HandType.FULL_HOUSE
-            case [1, 1, 2]:  # joker goes with pair, since 3-of-a-kind is better than 2-pair
-                return HandType.THREE
-            case [1, 1, 1, 1]:  # no comment
-                return HandType.ONE_PAIR
+                return cls.FULL_HOUSE
+            case [1, 1, 2]:
+                return cls.THREE
+            case [1, 1, 1, 1]:  # oof
+                return cls.ONE_PAIR
             case _:
-                raise ValueError(counts)
+                raise ValueError(f"{counter=}")
 
 
+# hand types in order from worst to best
 HAND_TYPE_ORDER = sorted(HandType, key=lambda ht: ht.value)
+
+CARD_ORDER = "23456789TJQKA"
 
 
 def card_value(card: str, *, j_is_joker: bool) -> int:
-    assert len(card) == 1
-    try:
-        return int(card)
-    except ValueError:
-        pass
-    match card:
-        case "T":
-            return 10
-        case "J":
-            return 1 if j_is_joker else 11
-        case "Q":
-            return 12
-        case "K":
-            return 13
-        case "A":
-            return 14
-        case _:
-            raise ValueError(card)
+    assert len(card) == 1, "card should be a single char"
+    if j_is_joker and card == "J":
+        return -float("inf")
+    return 1 + CARD_ORDER.index(card)
+
+
+def hand_sorting_key(hand: str, *, j_is_joker: bool) -> list[int]:
+    # lists use lexicographic ordering when compared against each other,
+    # so we can just use a list of card values as a proxy value when sorting hands
+    return [
+        card_value(card, j_is_joker=j_is_joker)
+        for card in hand
+    ]
 
 
 def read_input() -> Input:
     with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
+        split_lines = (
+            line.split()
+            for line_ in f.readlines()
+            if (line := line_.strip()) != ""
+        )
         return [
-            ((line_split := line_.split())[0], int(line_split[1]))
-            for line in f.readlines()
-            if (line_ := line.strip()) != ""
+            (hand, int(bet))
+            for hand, bet in split_lines
         ]
 
 
-def hand_sorting_key1(hand: str) -> list[int]:
-    return [
-        card_value(card, j_is_joker=False)
-        for card in hand
-    ]
-
-
-def solve1(input_: Input) -> int:
+def solve(input_: Input, *, j_is_joker: bool) -> int:
+    # put a proxy value at the start of each row so the rows can be sorted correctly later
     hands_with_keys = [
-        (hand_sorting_key1(hand), hand, bet)
+        (hand_sorting_key(hand, j_is_joker=j_is_joker), hand, bet)
         for hand, bet in input_
     ]
+    # sort hands into buckets by HandType
+    get_hand_type = HandType.from_hand_with_jokers if j_is_joker else HandType.from_hand
     hands_grouped_by_type = defaultdict(list)
-    for hand_tuple in hands_with_keys:
-        hand_type = HandType.from_hand1(hand_tuple[1])
-        hands_grouped_by_type[hand_type].append(hand_tuple)
-    for hand_list in hands_grouped_by_type.values():
-        hand_list.sort()  # in-place
-    overall_sorting = list(itertools.chain(  # concatenate lists
-        *(hands_grouped_by_type[hand_type] for hand_type in HAND_TYPE_ORDER)
-    ))
-    total_winnings = sum(
-        rank * hand_tuple[-1]
-        for rank, hand_tuple in enumerate(overall_sorting, start=1)
-    )
-    return total_winnings
-
-
-def hand_sorting_key2(hand: str) -> list[int]:
-    return [
-        card_value(card, j_is_joker=True)
-        for card in hand
+    for key_hand_bet in hands_with_keys:
+        hand_type = get_hand_type(key_hand_bet[1])
+        hands_grouped_by_type[hand_type].append(key_hand_bet)
+    # sort the hands of each bucket, then concatenate the buckets in order of hand type value
+    overall_sorting = [
+        key_hand_bet
+        for hand_type in HAND_TYPE_ORDER  # outer loop
+        for key_hand_bet in sorted(hands_grouped_by_type[hand_type])
     ]
-
-
-def solve2(input_: Input) -> int:
-    hands_with_keys = [
-        (hand_sorting_key2(hand), hand, bet)
-        for hand, bet in input_
-    ]
-    hands_grouped_by_type = defaultdict(list)
-    for hand_tuple in hands_with_keys:
-        hand_type = HandType.from_hand2(hand_tuple[1])
-        hands_grouped_by_type[hand_type].append(hand_tuple)
-    for hand_list in hands_grouped_by_type.values():
-        hand_list.sort()  # in-place
-    overall_sorting = list(itertools.chain(  # concatenate lists
-        *(hands_grouped_by_type[hand_type] for hand_type in HAND_TYPE_ORDER)
-    ))
+    # calculate the winnings of each hand and add it all up
     total_winnings = sum(
-        rank * hand_tuple[-1]
-        for rank, hand_tuple in enumerate(overall_sorting, start=1)
+        rank * bet
+        for rank, (_, __, bet) in enumerate(overall_sorting, start=1)
     )
     return total_winnings
 
 
 def main():
     input_ = read_input()
-    answer = solve1(input_)
+    answer = solve(input_, j_is_joker=False)
     pprint(answer)
-    answer = solve2(input_)
+    answer = solve(input_, j_is_joker=True)
     pprint(answer)
 
 
