@@ -19,7 +19,7 @@ class HandType(Enum):
     HIGH_CARD = 1
 
     @classmethod
-    def from_hand(cls, hand: str) -> "HandType":
+    def from_hand1(cls, hand: str) -> "HandType":
         assert len(hand) == 5
         counter = Counter(hand)
         counts = sorted(counter.values())
@@ -41,11 +41,45 @@ class HandType(Enum):
             case _:
                 raise ValueError(counter)
 
+    @classmethod
+    def from_hand2(cls, hand: str) -> "HandType":
+        assert len(hand) == 5
+        if "J" not in hand:  # no jokers; sort it out the normal way
+            return cls.from_hand1(hand)
+        counter = Counter(hand)
+        n_jokers = counter.pop("J")
+        if len(counter) <= 1:  # all actual cards are the same; match the jokers to them
+            return HandType.FIVE  # yahtzee!
+        if n_jokers == 3:  # 2 actual cards; they don't match
+            return HandType.FOUR
+        counts = sorted(counter.values())
+        if n_jokers == 2:  # 3 actual cards; not all the same
+            match counts:
+                case [1, 1, 1]:  # both jokers go with any (better than splitting to get 2-pair)
+                    return HandType.THREE
+                case [1, 2]:  # jokers go with the pair
+                    return HandType.FOUR
+                case _:
+                    raise ValueError(counts)
+        # 4 actual cards; not all the same
+        assert n_jokers == 1
+        match counts:
+            case [1, 3]:  # joker goes with the triple
+                return HandType.FOUR
+            case [2, 2]:
+                return HandType.FULL_HOUSE
+            case [1, 1, 2]:  # joker goes with pair, since 3-of-a-kind is better than 2-pair
+                return HandType.THREE
+            case [1, 1, 1, 1]:  # no comment
+                return HandType.ONE_PAIR
+            case _:
+                raise ValueError(counts)
+
 
 HAND_TYPE_ORDER = sorted(HandType, key=lambda ht: ht.value)
 
 
-def card_value(card: str) -> int:
+def card_value(card: str, *, j_is_joker: bool) -> int:
     assert len(card) == 1
     try:
         return int(card)
@@ -55,7 +89,7 @@ def card_value(card: str) -> int:
         case "T":
             return 10
         case "J":
-            return 11
+            return 1 if j_is_joker else 11
         case "Q":
             return 12
         case "K":
@@ -75,21 +109,49 @@ def read_input() -> Input:
         ]
 
 
-def hand_sorting_key(hand: str) -> list[int]:
+def hand_sorting_key1(hand: str) -> list[int]:
     return [
-        card_value(card)
+        card_value(card, j_is_joker=False)
         for card in hand
     ]
 
 
-def solve(input_: Input) -> int:
+def solve1(input_: Input) -> int:
     hands_with_keys = [
-        (hand_sorting_key(hand), hand, bet)
+        (hand_sorting_key1(hand), hand, bet)
         for hand, bet in input_
     ]
     hands_grouped_by_type = defaultdict(list)
     for hand_tuple in hands_with_keys:
-        hand_type = HandType.from_hand(hand_tuple[1])
+        hand_type = HandType.from_hand1(hand_tuple[1])
+        hands_grouped_by_type[hand_type].append(hand_tuple)
+    for hand_list in hands_grouped_by_type.values():
+        hand_list.sort()  # in-place
+    overall_sorting = list(itertools.chain(  # concatenate lists
+        *(hands_grouped_by_type[hand_type] for hand_type in HAND_TYPE_ORDER)
+    ))
+    total_winnings = sum(
+        rank * hand_tuple[-1]
+        for rank, hand_tuple in enumerate(overall_sorting, start=1)
+    )
+    return total_winnings
+
+
+def hand_sorting_key2(hand: str) -> list[int]:
+    return [
+        card_value(card, j_is_joker=True)
+        for card in hand
+    ]
+
+
+def solve2(input_: Input) -> int:
+    hands_with_keys = [
+        (hand_sorting_key2(hand), hand, bet)
+        for hand, bet in input_
+    ]
+    hands_grouped_by_type = defaultdict(list)
+    for hand_tuple in hands_with_keys:
+        hand_type = HandType.from_hand2(hand_tuple[1])
         hands_grouped_by_type[hand_type].append(hand_tuple)
     for hand_list in hands_grouped_by_type.values():
         hand_list.sort()  # in-place
@@ -105,7 +167,9 @@ def solve(input_: Input) -> int:
 
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_)
     pprint(answer)
 
 
