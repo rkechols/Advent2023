@@ -1,12 +1,25 @@
-import itertools
 from collections import Counter, defaultdict
 from enum import Enum
 from pathlib import Path
 from pprint import pprint
+from typing import Self
 
 Input = list[tuple[str, int]]
 
 INPUT_FILE_PATH = Path("input.txt")
+
+
+def read_input() -> Input:
+    with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
+        split_lines = (
+            line.split()
+            for line_ in f.readlines()
+            if (line := line_.strip()) != ""
+        )
+        return [
+            (hand, int(bet))
+            for hand, bet in split_lines
+        ]
 
 
 class HandType(Enum):
@@ -20,7 +33,7 @@ class HandType(Enum):
     HIGH_CARD = 1
 
     @classmethod
-    def from_hand(cls, hand: str) -> "HandType":
+    def from_hand(cls, hand: str) -> Self:
         assert len(hand) == 5
         counter = Counter(hand)
         counts = sorted(counter.values())
@@ -43,7 +56,7 @@ class HandType(Enum):
                 raise ValueError(f"{counter=}")
 
     @classmethod
-    def from_hand_with_jokers(cls, hand: str) -> "HandType":
+    def from_hand_with_jokers(cls, hand: str) -> Self:
         assert len(hand) == 5
         if "J" not in hand:  # no jokers; sort it out the normal way
             return cls.from_hand(hand)
@@ -86,7 +99,7 @@ CARD_ORDER = "23456789TJQKA"
 def card_value(card: str, *, j_is_joker: bool) -> int:
     assert len(card) == 1, "card should be a single char"
     if j_is_joker and card == "J":
-        return -float("inf")
+        return -1
     return 1 + CARD_ORDER.index(card)
 
 
@@ -97,19 +110,6 @@ def hand_sorting_key(hand: str, *, j_is_joker: bool) -> list[int]:
         card_value(card, j_is_joker=j_is_joker)
         for card in hand
     ]
-
-
-def read_input() -> Input:
-    with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
-        split_lines = (
-            line.split()
-            for line_ in f.readlines()
-            if (line := line_.strip()) != ""
-        )
-        return [
-            (hand, int(bet))
-            for hand, bet in split_lines
-        ]
 
 
 def solve(input_: Input, *, j_is_joker: bool) -> int:
