@@ -1,8 +1,8 @@
-from pathlib import Path
 import itertools
 import re
+from pathlib import Path
 from pprint import pprint
-from typing import Any, Literal
+from typing import Literal
 
 Input = tuple[str, dict[str, tuple[str, str]]]
 
@@ -41,16 +41,49 @@ def solve1(input_: Input) -> int:
             return i
 
 
+def _map_path_to_bools(path: list[str]) -> list[bool]:
+    return [
+        loc.endswith("Z")
+        for loc in path
+    ]
+
+
 def solve2(input_: Input) -> int:
     directions, graph = input_
-    curs = {loc for loc in graph if loc.endswith("A")}
-    for i, direction in enumerate(itertools.cycle(directions), start=1):
-        curs = {
-            _apply_direction(cur, direction, graph)
-            for cur in curs
-        }
-        if all(cur.endswith("Z") for cur in curs):
-            return i
+    assert len(directions) > 0
+    cycles = {}
+    for start in graph.keys():
+        if not start.endswith("A"):
+            continue  # not a starter
+        path = [start]
+        cur = start
+        for direction in itertools.cycle(directions):
+            cur = _apply_direction(cur, direction, graph)
+            try:
+                loop_start = path.index(cur)
+            except ValueError:
+                path.append(cur)
+            else:
+                break
+        else:
+            raise ValueError("empty list of directions")
+        intro, cycle = path[:loop_start], path[loop_start:]
+        cycles[start] = (intro, cycle)
+    pprint(cycles)
+    cycles_bools = {
+        start: (_map_path_to_bools(intro), _map_path_to_bools(cycle))
+        for start, (intro, cycle) in cycles.items()
+    }
+    pprint(cycles_bools)
+    has_z = {
+        start: (any(intro), any(cycle))
+        for start, (intro, cycle) in cycles_bools.items()
+    }
+    pprint(has_z)
+    for start, (intro, cycle) in cycles_bools.items():
+        if not any(itertools.chain(intro, cycle)):
+            raise ValueError(f"cycle starting from {start} did not have any True value")
+    print("😖")
 
 
 def main():
