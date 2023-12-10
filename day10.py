@@ -1,4 +1,5 @@
 from enum import Enum
+import itertools
 from pathlib import Path
 from pprint import pprint
 from typing import Iterable, Self
@@ -76,14 +77,28 @@ def neighbors(loc: Loc) -> Iterable[Loc]:
 
 def solve1(grid: np.ndarray) -> tuple[int, list[tuple[Loc, Direction]]]:
     start = find_start(grid)
-    start_direction = None
+    start_directions = set()
     for direction in Direction:
         neighbor_loc = shift(start, direction)
         neighbor = grid[neighbor_loc]
         if neighbor != EMPTY and direction.opposite() in symbol_to_directions(neighbor):
-            start_direction = direction
-            break
-    assert start_direction is not None
+            start_directions.add(direction)
+    if start_directions == {Direction.LEFT, Direction.UP}:
+        start_symbol = "J"
+    elif start_directions == {Direction.LEFT, Direction.DOWN}:
+        start_symbol = "7"
+    elif start_directions == {Direction.RIGHT, Direction.UP}:
+        start_symbol = "L"
+    elif start_directions == {Direction.RIGHT, Direction.DOWN}:
+        start_symbol = "F"
+    elif start_directions == {Direction.LEFT, Direction.RIGHT}:
+        start_symbol = "-"
+    elif start_directions == {Direction.UP, Direction.DOWN}:
+        start_symbol = "|"
+    else:
+        raise ValueError("🫠")
+    grid[start] = start_symbol
+    start_direction = next(iter(start_directions))
     loop = [(start, start_direction)]
     loc = shift(start, start_direction)
     while loc != start:
@@ -103,33 +118,31 @@ def solve1(grid: np.ndarray) -> tuple[int, list[tuple[Loc, Direction]]]:
     return half, loop
 
 
+def print_grid(grid: np.ndarray):
+    print("\n".join("".join(row) for row in grid))
+
+
 def solve2(grid: np.ndarray, loop: list[tuple[Loc, Direction]]) -> int:
-    # what direction is the loop rotating as a whole
-    cross_sum = 0
-    for i, (_, direction) in enumerate(loop):
-        prev_direction = loop[i - 1][1]
-        if direction == prev_direction:
-            continue  # nothing of note
-        a1, a2 = prev_direction.value
-        b1, b2 = direction.value
-        cross = (a1 * b2) - (a2 * b1)
-        cross_sum += cross
-    assert abs(cross_sum) == 4
-    if cross_sum > 0:
-        direction_to_inside = Direction.counter_clockwise
-    else:
-        direction_to_inside = Direction.clockwise
-    # start searches from all locations just inside the loop
+    canvas = np.array([[" " for _ in range(grid.shape[1])] for _ in range(grid.shape[0])])
+    for loop_loc, _ in loop:
+        canvas[loop_loc] = grid[loop_loc]
     loop_locs = {loop_loc for loop_loc, _ in loop}
-    inside_locs = set()
-    for loop_loc, loop_direction in loop:
-        bfs_locs = {shift(loop_loc, direction_to_inside(loop_direction))}
-        while len(bfs_locs) > 0:
-            search_loc = bfs_locs.pop()
-            if search_loc not in loop_locs and search_loc not in inside_locs:
-                inside_locs.add(search_loc)
-                bfs_locs.update(shift(search_loc, direction) for direction in Direction)
-    return len(inside_locs)
+    n_inside = 0
+    for search_start_loc in itertools.product(*(range(dim_size) for dim_size in grid.shape)):
+        if search_start_loc in loop_locs:
+            continue
+        n_crossings = 0
+        search_loc = search_start_loc
+        while (search_loc := shift(search_loc, Direction.UP))[0] > 0:
+            if search_loc in loop_locs:
+                symbol = grid[search_loc]
+                if symbol in "-J7":
+                    n_crossings += 1
+                elif symbol not in "|FL":
+                    raise ValueError(f"symbol {symbol!r} should not be part of the loop")
+        if n_crossings % 2 != 0:  # odd crossing; we were inside
+            n_inside += 1
+    return n_inside
 
 
 def main():
