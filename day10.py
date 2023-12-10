@@ -1,5 +1,3 @@
-import copy
-import math
 from enum import Enum
 from pathlib import Path
 from pprint import pprint
@@ -29,15 +27,16 @@ class Direction(Enum):
     DOWN = (1, 0)
 
     def opposite(self) -> Self:
-        if self == self.RIGHT:
-            return self.LEFT
-        if self == self.LEFT:
-            return self.RIGHT
-        if self == self.UP:
-            return self.DOWN
-        if self == self.DOWN:
-            return self.UP
-        raise ValueError
+        r, c = self.value
+        return self.__class__((-1 * r, -1 * c))
+
+    def clockwise(self) -> Self:
+        r, c = self.value
+        return self.__class__((c, -1 * r))
+
+    def counter_clockwise(self) -> Self:
+        r, c = self.value
+        return self.__class__((-1 * c, r))
 
 
 def shift(loc: Loc, direction: Direction) -> Loc:
@@ -105,7 +104,32 @@ def solve1(grid: np.ndarray) -> tuple[int, list[tuple[Loc, Direction]]]:
 
 
 def solve2(grid: np.ndarray, loop: list[tuple[Loc, Direction]]) -> int:
-    pass
+    # what direction is the loop rotating as a whole
+    cross_sum = 0
+    for i, (_, direction) in enumerate(loop):
+        prev_direction = loop[i - 1][1]
+        if direction == prev_direction:
+            continue  # nothing of note
+        a1, a2 = prev_direction.value
+        b1, b2 = direction.value
+        cross = (a1 * b2) - (a2 * b1)
+        cross_sum += cross
+    assert abs(cross_sum) == 4
+    if cross_sum > 0:
+        direction_to_inside = Direction.counter_clockwise
+    else:
+        direction_to_inside = Direction.clockwise
+    # start searches from all locations just inside the loop
+    loop_locs = {loop_loc for loop_loc, _ in loop}
+    inside_locs = set()
+    for loop_loc, loop_direction in loop:
+        bfs_locs = {shift(loop_loc, direction_to_inside(loop_direction))}
+        while len(bfs_locs) > 0:
+            search_loc = bfs_locs.pop()
+            if search_loc not in loop_locs and search_loc not in inside_locs:
+                inside_locs.add(search_loc)
+                bfs_locs.update(shift(search_loc, direction) for direction in Direction)
+    return len(inside_locs)
 
 
 def main():
