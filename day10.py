@@ -1,10 +1,11 @@
+import copy
+import math
+from enum import Enum
 from pathlib import Path
 from pprint import pprint
 from typing import Iterable, Self
-import numpy as np
-from enum import Enum
 
-Input = np.ndarray
+import numpy as np
 
 INPUT_FILE_PATH = Path("input.txt")
 
@@ -13,7 +14,7 @@ START = "S"
 EMPTY = "."
 
 
-def read_input() -> Input:
+def read_input() -> np.ndarray:
     with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
         return np.pad(np.array([
             list(line.strip())
@@ -74,41 +75,44 @@ def neighbors(loc: Loc) -> Iterable[Loc]:
         yield shift(loc, direction)
 
 
-def solve(input_: Input) -> int:
-    start = find_start(input_)
-    start_neighbor_locs = set()
+def solve1(grid: np.ndarray) -> tuple[int, list[tuple[Loc, Direction]]]:
+    start = find_start(grid)
+    start_direction = None
     for direction in Direction:
         neighbor_loc = shift(start, direction)
-        neighbor = input_[neighbor_loc]
+        neighbor = grid[neighbor_loc]
         if neighbor != EMPTY and direction.opposite() in symbol_to_directions(neighbor):
-            start_neighbor_locs.add(neighbor_loc)
-    assert len(start_neighbor_locs) == 2
-    loop_locs = {start} | start_neighbor_locs
-    cur_locs = start_neighbor_locs
-    while True:
-        neighbor_locs = {
-            shift(cur_loc, direction)
-            for cur_loc in cur_locs
-            for direction in symbol_to_directions(input_[cur_loc])
-        } - loop_locs
-        loop_locs.update(neighbor_locs)
-        n = len(neighbor_locs)
-        if n == 0:
-            raise ValueError("idk")
-        elif n == 1:
-            loop_size = len(loop_locs)
-            half, remainder = divmod(loop_size, 2)
-            assert remainder == 0
-            return half
-        elif n == 2:
-            cur_locs = neighbor_locs
+            start_direction = direction
+            break
+    assert start_direction is not None
+    loop = [(start, start_direction)]
+    loc = shift(start, start_direction)
+    while loc != start:
+        for direction in symbol_to_directions(grid[loc]):
+            new_loc = shift(loc, direction)
+            if new_loc != loop[-1][0]:  # don't go backward
+                # figured out what direction to go from here; write it down and do it
+                loop.append((loc, direction))
+                loc = new_loc
+                break
         else:
-            raise ValueError("idk 2")
+            raise ValueError("idk")
+    # loop completed
+    loop_size = len(loop)
+    half, remainder = divmod(loop_size, 2)
+    assert remainder == 0
+    return half, loop
+
+
+def solve2(grid: np.ndarray, loop: list[tuple[Loc, Direction]]) -> int:
+    pass
 
 
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer, loop = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_, loop)
     pprint(answer)
 
 
