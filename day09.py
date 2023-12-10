@@ -22,12 +22,14 @@ def read_input() -> Input:
 def solve1(input_: Input) -> int:
     total = 0
     for input_row in input_:
-        stack = [input_row]
-        while not np.all((row := stack[-1]) == 0):
-            stack.append(row[1:] - row[:-1])
+        row = input_row
+        stack_lasts = [row[-1]]
+        while not np.all(row == 0):
+            row = row[1:] - row[:-1]
+            stack_lasts.append(row[-1])
         cur = 0
-        for row in reversed(stack):
-            cur += row[-1]
+        for row_last in reversed(stack_lasts):
+            cur += row_last
         total += cur
     return total
 
@@ -35,12 +37,14 @@ def solve1(input_: Input) -> int:
 def solve2(input_: Input) -> int:
     total = 0
     for input_row in input_:
-        stack = [input_row]
-        while not np.all((row := stack[-1]) == 0):
-            stack.append(row[1:] - row[:-1])
+        row_first = input_row
+        stack_firsts = [row_first[0]]
+        while not np.all(row_first == 0):
+            row_first = row_first[1:] - row_first[:-1]
+            stack_firsts.append(row_first[0])
         cur = 0
-        for row in reversed(stack):
-            cur = row[0] - cur
+        for row_first in reversed(stack_firsts):
+            cur = row_first - cur
         total += cur
     return total
 
