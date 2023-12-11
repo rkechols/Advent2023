@@ -4,7 +4,7 @@ from pprint import pprint
 
 import numpy as np
 
-Input = np.ndarray  # feel free to change per-problem; whatever structure is easiest
+Input = np.ndarray  # numpy array of bools, shape (m, n)
 
 INPUT_FILE_PATH = Path("input.txt")
 
@@ -19,7 +19,7 @@ def read_input() -> Input:
         ], dtype=bool)
 
 
-def grid_to_locs(grid: np.ndarray) -> list[tuple[int, int]]:
+def grid_to_locs(grid: Input) -> list[tuple[int, int]]:
     galaxy_locs = []
     for loc in itertools.product(range(grid.shape[0]), range(grid.shape[1])):
         if grid[loc]:
