@@ -32,7 +32,7 @@ def get_regex(numbers: tuple[int, ...]):
 
 
 @cache
-def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
+def _count_matches_brute(spring_states: str, numbers: tuple[int, ...]) -> int:
     # trim any deterministic prefix
     while len(numbers) > 0:
         next_num = numbers[0]  # what number of BROKEN to try to fit
@@ -61,7 +61,7 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
         # starts with UNK, then has UNK|BROKEN, and next_state is UNK or WORKING
         # alignment unclear
         break
-
+    # the actual brute-force part:
     # base case:
     if len(numbers) == 0:
         return 0 if BROKEN in spring_states else 1
@@ -74,31 +74,24 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
     # try substituting the unk for both options and calculating answers recursively
     prefix = spring_states[:i_unk]
     postfix = spring_states[(i_unk + 1):]
-    n_if_working = _count_matches(prefix + WORKING + postfix, numbers)
-    n_if_broken = _count_matches(prefix + BROKEN + postfix, numbers)
+    n_if_working = _count_matches_brute(prefix + WORKING + postfix, numbers)
+    n_if_broken = _count_matches_brute(prefix + BROKEN + postfix, numbers)
     return n_if_working + n_if_broken
 
 
-def solve1(input_: Input) -> int:
-    return sum(
-        _count_matches(spring_states, numbers)
-        for spring_states, numbers in input_
-    )
-
-
-def _count_matches2(spring_sections: list[str], numbers: tuple[int, ...]) -> int:
+def _count_matches_by_section(spring_sections: list[str], numbers: tuple[int, ...]) -> int:
     n_numbers = len(numbers)
     if n_numbers == 0:
         return 0 if any(BROKEN in sec for sec in spring_sections) else 1
     this_section, *other_sections = spring_sections
     # base case: go straight to brute force
     if len(other_sections) == 0:
-        return _count_matches(this_section, numbers)
+        return _count_matches_brute(this_section, numbers)
     # count up how many ways branching from this state, depending how many numbers we put into this section
     total = 0
     # n_numbers == 0:
     if BROKEN not in this_section:  # what if this section uses no numbers?
-        total += _count_matches2(other_sections, numbers)
+        total += _count_matches_by_section(other_sections, numbers)
     # n_numbers > 0:
     n_this_section = len(this_section)
     for n_numbers in range(1, n_numbers + 1):
@@ -106,40 +99,38 @@ def _count_matches2(spring_sections: list[str], numbers: tuple[int, ...]) -> int
         min_len = sum(numbers_sub) + n_numbers - 1
         if min_len > n_this_section:  # can't fit all these numbers into this section
             break
-        n_matches_this_section = _count_matches(this_section, numbers_sub)
+        n_matches_this_section = _count_matches_brute(this_section, numbers_sub)
         if n_matches_this_section == 0:
             continue
-        total += n_matches_this_section * _count_matches2(other_sections, numbers[n_numbers:])
+        total += n_matches_this_section * _count_matches_by_section(other_sections, numbers[n_numbers:])
     return total
 
 
-def solve2(input_: Input) -> int:
+def solve(input_: Input, *, expand: int = 1) -> int:
+    if expand < 1:
+        raise ValueError(f"{expand=} must be a positive integer")
     total = 0
     for spring_states, numbers in input_:
-        # expand
-        spring_states = UNK.join(spring_states for _ in range(5))
-        numbers = numbers * 5
+        if expand > 1:
+            # expand
+            spring_states = UNK.join(spring_states for _ in range(expand))
+            numbers = numbers * expand
         # solve
         spring_sections = [
             section
             for section in re.split(rf"[{WORKING}]+", spring_states)
             if section != ""
         ]
-        n_matches = _count_matches2(spring_sections, numbers)
+        n_matches = _count_matches_by_section(spring_sections, numbers)
         total += n_matches
     return total
 
 
 def main():
     input_ = read_input()
-    answer = solve1(input_)
+    answer = solve(input_)
     pprint(answer)
-    # import cProfile
-    # profiler = cProfile.Profile()
-    # profiler.enable()
-    answer = solve2(input_)
-    # profiler.disable()
-    # profiler.dump_stats("profile.stats")
+    answer = solve(input_, expand=5)
     pprint(answer)
 
 
