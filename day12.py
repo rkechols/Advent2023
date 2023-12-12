@@ -49,7 +49,7 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
         # at least 1 extra spot
         these_states = spring_states[:next_num]
         next_state = spring_states[next_num]
-        if these_states[0] == BROKEN or next_state == WORKING:  # forced fully left
+        if these_states[0] == BROKEN:  # forced fully left
             if WORKING in these_states or next_state == BROKEN:  # invalid
                 return 0
             # these_states are all BROKEN or UNK, and next_state is WORKING or UNK;
@@ -57,8 +57,8 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
             spring_states = spring_states[(next_num + 1):]
             numbers = numbers[1:]
             continue
-        # (WORKING not in these_states) and (next_state == UNK);
-        # starts with UNK, then has UNK|BROKEN, and next_state is UNK
+        # (WORKING not in these_states) and (next_state != BROKEN);
+        # starts with UNK, then has UNK|BROKEN, and next_state is UNK or WORKING
         # alignment unclear
         break
 
@@ -83,10 +83,13 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
 
 
 def solve1(input_: Input) -> int:
-    return sum(
-        _count_matches(spring_states, numbers)
-        for spring_states, numbers in input_
-    )
+    with open("out2.txt", "w", encoding="utf-8") as f:
+        total = 0
+        for spring_states, numbers in input_:
+            n_matches = _count_matches(spring_states, numbers)
+            print(n_matches, file=f)
+            total += n_matches
+    return total
 
 
 def _count_matches2(spring_sections: list[str], numbers: tuple[int, ...]) -> int:
@@ -128,7 +131,8 @@ def solve2(input_: Input) -> int:
             for section in re.split(rf"[{WORKING}]+", spring_states)
             if section != ""
         ]
-        total += _count_matches2(spring_sections, numbers)
+        n_matches = _count_matches2(spring_sections, numbers)
+        total += n_matches
     return total
 
 
