@@ -71,9 +71,6 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
         i_unk = spring_states.index(UNK)
     except ValueError:  # no more unknowns
         return 0 if re_springs.fullmatch(spring_states) is None else 1
-    # check that the current state is even remotely possible
-    if re_springs.fullmatch(spring_states[:i_unk] + (UNK * (len(spring_states) - i_unk))) is None:
-        return 0
     # try substituting the unk for both options and calculating answers recursively
     prefix = spring_states[:i_unk]
     postfix = spring_states[(i_unk + 1):]
@@ -83,13 +80,10 @@ def _count_matches(spring_states: str, numbers: tuple[int, ...]) -> int:
 
 
 def solve1(input_: Input) -> int:
-    with open("out2.txt", "w", encoding="utf-8") as f:
-        total = 0
-        for spring_states, numbers in input_:
-            n_matches = _count_matches(spring_states, numbers)
-            print(n_matches, file=f)
-            total += n_matches
-    return total
+    return sum(
+        _count_matches(spring_states, numbers)
+        for spring_states, numbers in input_
+    )
 
 
 def _count_matches2(spring_sections: list[str], numbers: tuple[int, ...]) -> int:
@@ -107,7 +101,7 @@ def _count_matches2(spring_sections: list[str], numbers: tuple[int, ...]) -> int
         total += _count_matches2(other_sections, numbers)
     # n_numbers > 0:
     n_this_section = len(this_section)
-    for n_numbers in range(1, n_numbers):
+    for n_numbers in range(1, n_numbers + 1):
         numbers_sub = numbers[:n_numbers]
         min_len = sum(numbers_sub) + n_numbers - 1
         if min_len > n_this_section:  # can't fit all these numbers into this section
@@ -140,7 +134,12 @@ def main():
     input_ = read_input()
     answer = solve1(input_)
     pprint(answer)
+    # import cProfile
+    # profiler = cProfile.Profile()
+    # profiler.enable()
     answer = solve2(input_)
+    # profiler.disable()
+    # profiler.dump_stats("profile.stats")
     pprint(answer)
 
 
