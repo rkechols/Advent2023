@@ -1,6 +1,5 @@
-from pathlib import Path
 import re
-from collections import Counter
+from pathlib import Path
 from pprint import pprint
 
 Input = list[tuple[str, list[int]]]
@@ -28,6 +27,9 @@ def _count_matches(spring_states: str, re_springs: re.Pattern) -> int:
         i_unk = spring_states.index(UNK)
     except ValueError:  # no more unknowns
         return 0 if re_springs.fullmatch(spring_states) is None else 1
+    # check that the current state is even remotely possible
+    if re_springs.fullmatch(spring_states[:i_unk] + (UNK * (len(spring_states) - i_unk))) is None:
+        return 0
     # try substituting the unk for both options and calculating answers recursively
     prefix = spring_states[:i_unk]
     postfix = spring_states[(i_unk + 1):]
