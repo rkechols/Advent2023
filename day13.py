@@ -40,7 +40,7 @@ def _find_reflection_row(grid: np.ndarray) -> int | None:
     return None
 
 
-def solve(input_: Input) -> int:
+def solve1(input_: Input) -> int:
     total = 0
     for i, grid in enumerate(input_):
         reflection_row = _find_reflection_row(grid)
@@ -55,9 +55,38 @@ def solve(input_: Input) -> int:
     return total
 
 
+def _find_reflection_row_smudge(grid: np.ndarray) -> int | None:
+    assert len(grid.shape) == 2
+    n_rows = grid.shape[0]
+    assert n_rows > 1
+    for i in range(1, n_rows):
+        n_below = n_rows - i
+        n_mirrorable = min(i, n_below)
+        if np.count_nonzero(grid[(i - n_mirrorable):i] != grid[(i + n_mirrorable - 1):(i - 1):-1]) == 1:
+            return i
+    return None
+
+
+def solve2(input_: Input) -> int:
+    total = 0
+    for i, grid in enumerate(input_):
+        reflection_row = _find_reflection_row_smudge(grid)
+        if reflection_row is not None:
+            total += 100 * reflection_row
+            continue
+        reflection_col = _find_reflection_row_smudge(grid.T)
+        if reflection_col is not None:
+            total += reflection_col
+            continue
+        raise ValueError(f"no reflection found (grid index {i})")
+    return total
+
+
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_)
     pprint(answer)
 
 
