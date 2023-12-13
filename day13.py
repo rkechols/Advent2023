@@ -1,6 +1,6 @@
 from pathlib import Path
 from pprint import pprint
-from typing import Any
+
 import numpy as np
 
 Input = list[np.ndarray]
@@ -25,56 +25,28 @@ def read_input() -> Input:
     return blocks
 
 
-def _find_reflection_row(grid: np.ndarray) -> int | None:
+def _find_reflection_row_smudge(grid: np.ndarray, *, smudges: int) -> int | None:
     assert len(grid.shape) == 2
     n_rows = grid.shape[0]
     assert n_rows > 1
     for i in range(1, n_rows):
         n_below = n_rows - i
         n_mirrorable = min(i, n_below)
-        if np.array_equal(
-            grid[(i - n_mirrorable):i],
-            grid[(i + n_mirrorable - 1):(i - 1):-1],
-        ):
+        grid_above = grid[(i - n_mirrorable):i]
+        grid_below = grid[(i + n_mirrorable - 1):(i - 1):-1]
+        if np.count_nonzero(grid_above != grid_below) == smudges:
             return i
     return None
 
 
-def solve1(input_: Input) -> int:
+def solve(input_: Input, *, smudges: int = 0) -> int:
     total = 0
     for i, grid in enumerate(input_):
-        reflection_row = _find_reflection_row(grid)
+        reflection_row = _find_reflection_row_smudge(grid, smudges=smudges)
         if reflection_row is not None:
             total += 100 * reflection_row
             continue
-        reflection_col = _find_reflection_row(grid.T)
-        if reflection_col is not None:
-            total += reflection_col
-            continue
-        raise ValueError(f"no reflection found (grid index {i})")
-    return total
-
-
-def _find_reflection_row_smudge(grid: np.ndarray) -> int | None:
-    assert len(grid.shape) == 2
-    n_rows = grid.shape[0]
-    assert n_rows > 1
-    for i in range(1, n_rows):
-        n_below = n_rows - i
-        n_mirrorable = min(i, n_below)
-        if np.count_nonzero(grid[(i - n_mirrorable):i] != grid[(i + n_mirrorable - 1):(i - 1):-1]) == 1:
-            return i
-    return None
-
-
-def solve2(input_: Input) -> int:
-    total = 0
-    for i, grid in enumerate(input_):
-        reflection_row = _find_reflection_row_smudge(grid)
-        if reflection_row is not None:
-            total += 100 * reflection_row
-            continue
-        reflection_col = _find_reflection_row_smudge(grid.T)
+        reflection_col = _find_reflection_row_smudge(grid.T, smudges=smudges)
         if reflection_col is not None:
             total += reflection_col
             continue
@@ -84,9 +56,9 @@ def solve2(input_: Input) -> int:
 
 def main():
     input_ = read_input()
-    answer = solve1(input_)
+    answer = solve(input_)
     pprint(answer)
-    answer = solve2(input_)
+    answer = solve(input_, smudges=1)
     pprint(answer)
 
 
