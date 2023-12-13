@@ -40,6 +40,8 @@ def _find_reflection_row_smudge(grid: np.ndarray, *, smudges: int) -> int | None
 
 
 def solve(input_: Input, *, smudges: int = 0) -> int:
+    if smudges < 0:
+        raise ValueError(f"`smudges` must be non-negative, but received {smudges=}")
     total = 0
     for i, grid in enumerate(input_):
         reflection_row = _find_reflection_row_smudge(grid, smudges=smudges)
