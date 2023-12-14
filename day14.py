@@ -8,8 +8,8 @@ Input = np.ndarray  # each slot is a single char
 INPUT_FILE_PATH = Path("input.txt")
 
 EMPTY = "."
-ROCK = "#"
-BALL = "O"
+ROCK_STATIC = "#"
+ROCK_MOBILE = "O"
 
 
 def read_input() -> Input:
@@ -29,13 +29,13 @@ def tilt_north(grid: np.ndarray) -> np.ndarray:
             obj = grid[r, c]
             if obj == EMPTY:
                 continue
-            elif obj == ROCK:
+            elif obj == ROCK_STATIC:
                 r_last_obstacle = r
-            elif obj == BALL:
+            elif obj == ROCK_MOBILE:
                 # rolls up
                 grid[r, c] = EMPTY
                 r_destination = r_last_obstacle + 1
-                grid[r_destination, c] = BALL
+                grid[r_destination, c] = ROCK_MOBILE
                 r_last_obstacle = r_destination
             else:
                 raise ValueError(f"grid[{r}, {c}] has unexpected value {obj!r}")
@@ -48,7 +48,7 @@ def solve1(grid: Input) -> int:
     # scores
     total_load = 0
     for load, row in enumerate(grid[::-1], start=1):
-        count = np.count_nonzero(row == BALL)
+        count = np.count_nonzero(row == ROCK_MOBILE)
         total_load += count * load
     return total_load
 
@@ -81,7 +81,7 @@ def solve2(grid: Input, *, n_cycles: int) -> int:
     # scores
     total_load = 0
     for load, row in enumerate(grid[::-1], start=1):
-        count = np.count_nonzero(row == BALL)
+        count = np.count_nonzero(row == ROCK_MOBILE)
         total_load += count * load
     return total_load
 
