@@ -1,6 +1,7 @@
+import re
+from collections import defaultdict, OrderedDict
 from pathlib import Path
 from pprint import pprint
-from typing import Any
 
 Input = list[str]
 
@@ -27,13 +28,40 @@ def hash_alg(s: str) -> int:
     return num
 
 
-def solve(input_: Input) -> int:
+def solve1(input_: Input) -> int:
     return sum(map(hash_alg, input_))
+
+
+def solve2(input_: Input) -> int:
+    boxes = defaultdict(OrderedDict)
+    for line in input_:
+        label, op = re.fullmatch(r"([a-zA-Z]+)(-|=\d)", line).groups()
+        box_num = hash_alg(label)
+        box: OrderedDict = boxes[box_num]
+        try:
+            num_previous = box[label]
+        except KeyError:
+            num_previous = None
+        if op == "-":
+            if num_previous is not None:
+                del box[label]
+        elif op.startswith("="):
+            num = int(op[1:])
+            box[label] = num
+        else:
+            raise ValueError(op)
+    focus_power = 0
+    for box_num in range(256):
+        for lens_index, num in enumerate(boxes[box_num].values(), start=1):
+            focus_power += (box_num + 1) * lens_index * num
+    return focus_power
 
 
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_)
     pprint(answer)
 
 
