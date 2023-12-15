@@ -4,10 +4,10 @@ import java.io.File
 
 typealias Input = List<String>
 
-val inputFilePath = "input.txt"
+val inputFilePath = File("input.txt")
 
 
-fun readInput(): Input = File(inputFilePath).readLines()
+fun readInput(): Input = inputFilePath.readLines()
     .map { line -> line.trim() }
     .filter { line -> line.isNotEmpty() }
 

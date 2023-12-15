@@ -5,7 +5,7 @@ import kotlin.math.max
 
 typealias Input = Map<Int, List<Pair<String, Int>>>
 
-val inputFilePath = "input.txt"
+val inputFilePath = File("input.txt")
 
 val colorMaxes = mapOf(
     "red" to 12,
@@ -18,7 +18,7 @@ val regexColorCount = Regex("(\\d+)\\s+(${colors.joinToString("|")})")
 
 
 fun readInput(): Input {
-    val fileString = File(inputFilePath).readText()
+    val fileString = inputFilePath.readText()
     val data = HashMap<Int, List<Pair<String, Int>>>()
     val regexGameNum = Regex("^Game (\\d+):")
     for (lineRaw in fileString.lines()) {

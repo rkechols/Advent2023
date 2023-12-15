@@ -4,10 +4,10 @@ import java.io.File
 
 typealias Input = String  // feel free to change per-problem; whatever structure is easiest
 
-val inputFilePath = "input.txt"
+val inputFilePath = File("input.txt")
 
 
-fun readInput(): Input = File(inputFilePath).readText()
+fun readInput(): Input = inputFilePath.readText()
 
 
 fun solve(input: Input): Any {
