@@ -31,7 +31,7 @@ def solve1(input_: Input) -> int:
 
 
 def solve2(input_: Input) -> int:
-    boxes = defaultdict(OrderedDict)
+    boxes = defaultdict(OrderedDict)  # could also be normal dict, actually, but it's good to be explicit
     for instruction in input_:
         label, op = re.fullmatch(r"([a-zA-Z]+)(-|=\d)", instruction).groups()
         box_num = hash_alg(label)
