@@ -9,15 +9,13 @@ typealias Input = List<List<Char>>
 
 val inputFilePath = File("input.txt")
 
-fun readInput(): Input {
-    return inputFilePath.readLines().map {
-        line -> line.trim().toList()
-    }
+fun readInput(): Input = inputFilePath.readLines().map {
+    line -> line.trim().toList()
 }
 
-fun isSymbol(s: Char): Boolean {
-    return !(s.isDigit() || s == symEmpty)
-}
+
+fun isSymbol(s: Char) = !(s.isDigit() || s == symEmpty)
+
 
 fun countDigits(row: List<Char>): Int {
     assert(row[0].isDigit())
