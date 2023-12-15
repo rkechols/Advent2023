@@ -7,16 +7,14 @@ Input = list[str]
 
 INPUT_FILE_PATH = Path("input.txt")
 
+N_BOXES = 256
+
 
 def read_input() -> Input:
     with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
         f_data = f.read()
-    f_data = f_data.replace("\n", "")
-    return [
-        s
-        for s in f_data.split(",")
-        if s != ""
-    ]
+    f_data = f_data.replace("\n", "").strip()
+    return list(f_data.split(","))
 
 
 def hash_alg(s: str) -> int:
@@ -24,7 +22,7 @@ def hash_alg(s: str) -> int:
     for c in s:
         num += ord(c)
         num *= 17
-        num %= 256
+        num %= N_BOXES
     return num
 
 
@@ -34,26 +32,22 @@ def solve1(input_: Input) -> int:
 
 def solve2(input_: Input) -> int:
     boxes = defaultdict(OrderedDict)
-    for line in input_:
-        label, op = re.fullmatch(r"([a-zA-Z]+)(-|=\d)", line).groups()
+    for instruction in input_:
+        label, op = re.fullmatch(r"([a-zA-Z]+)(-|=\d)", instruction).groups()
         box_num = hash_alg(label)
-        box: OrderedDict = boxes[box_num]
-        try:
-            num_previous = box[label]
-        except KeyError:
-            num_previous = None
+        box = boxes[box_num]
         if op == "-":
-            if num_previous is not None:
+            if label in box:
                 del box[label]
         elif op.startswith("="):
-            num = int(op[1:])
-            box[label] = num
+            box[label] = int(op.removeprefix("="))
         else:
-            raise ValueError(op)
-    focus_power = 0
-    for box_num in range(256):
-        for lens_index, num in enumerate(boxes[box_num].values(), start=1):
-            focus_power += (box_num + 1) * lens_index * num
+            raise ValueError(f"{op=}")
+    focus_power = sum(
+        (box_num + 1) * lens_index * num
+        for box_num in range(N_BOXES)
+        for lens_index, num in enumerate(boxes[box_num].values(), start=1)
+    )
     return focus_power
 
 
