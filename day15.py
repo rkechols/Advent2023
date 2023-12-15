@@ -18,12 +18,12 @@ def read_input() -> Input:
 
 
 def hash_alg(s: str) -> int:
-    num = 0
+    cur = 0
     for c in s:
-        num += ord(c)
-        num *= 17
-        num %= N_BOXES
-    return num
+        cur += ord(c)
+        cur *= 17
+        cur %= N_BOXES
+    return cur
 
 
 def solve1(input_: Input) -> int:
@@ -44,9 +44,9 @@ def solve2(input_: Input) -> int:
         else:
             raise ValueError(f"{op=}")
     focus_power = sum(
-        (box_num + 1) * lens_index * num
+        (box_num + 1) * lens_index * focal_length
         for box_num in range(N_BOXES)
-        for lens_index, num in enumerate(boxes[box_num].values(), start=1)
+        for lens_index, focal_length in enumerate(boxes[box_num].values(), start=1)
     )
     return focus_power
 
