@@ -1,8 +1,8 @@
-from pathlib import Path
 from collections import defaultdict
-from pprint import pprint
 from enum import Enum
-from typing import Iterable, Optional
+from pathlib import Path
+from pprint import pprint
+from typing import Iterable
 
 import numpy as np
 
@@ -76,16 +76,17 @@ def solve1(grid: Input, *, start_loc: tuple[int, int] = (0, 0), start_direction:
 def solve2(grid: Input) -> int:
     n_rows, n_cols = grid.shape
     last_row, last_col = n_rows - 1, n_cols - 1
-    def gen_all() -> Iterable[int]:
+    def gen_entrypoints() -> Iterable[tuple[tuple[int, int], Direction]]:
         for row in range(n_rows):
-            yield solve1(grid, start_loc=(row, 0), start_direction=Direction.RIGHT)
-            yield solve1(grid, start_loc=(row, last_col), start_direction=Direction.LEFT)
+            yield (row, 0), Direction.RIGHT
+            yield (row, last_col), Direction.LEFT
         for col in range(n_cols):
-            yield solve1(grid, start_loc=(0, col), start_direction=Direction.DOWN)
-            yield solve1(grid, start_loc=(last_row, col), start_direction=Direction.UP)
-    data = list(gen_all())
-    return max(data)
-
+            yield (0, col), Direction.DOWN
+            yield (last_row, col), Direction.UP
+    return max(
+        solve1(grid, start_loc=start_loc, start_direction=start_direction)
+        for start_loc, start_direction in gen_entrypoints()
+    )
 
 
 def main():
