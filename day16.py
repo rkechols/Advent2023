@@ -2,7 +2,7 @@ from pathlib import Path
 from collections import defaultdict
 from pprint import pprint
 from enum import Enum
-from typing import Optional
+from typing import Iterable, Optional
 
 import numpy as np
 
@@ -54,12 +54,10 @@ def read_input() -> Input:
         ])
 
 
-def solve(grid: Input) -> int:
+def solve1(grid: Input, *, start_loc: tuple[int, int] = (0, 0), start_direction: Direction = Direction.RIGHT) -> int:
     energized_locs_with_dirs = defaultdict(set)
-    loc = (0, 0)
-    direction = Direction.RIGHT
-    energized_locs_with_dirs[loc].add(direction)
-    search_queue = {(loc, direction)}
+    energized_locs_with_dirs[start_loc].add(start_direction)
+    search_queue = {(start_loc, start_direction)}
     while len(search_queue) > 0:
         loc, direction = search_queue.pop()
         mirror = grid[loc]
@@ -75,9 +73,26 @@ def solve(grid: Input) -> int:
     return sum(len(dirs) > 0 for dirs in energized_locs_with_dirs.values())
 
 
+def solve2(grid: Input) -> int:
+    n_rows, n_cols = grid.shape
+    last_row, last_col = n_rows - 1, n_cols - 1
+    def gen_all() -> Iterable[int]:
+        for row in range(n_rows):
+            yield solve1(grid, start_loc=(row, 0), start_direction=Direction.RIGHT)
+            yield solve1(grid, start_loc=(row, last_col), start_direction=Direction.LEFT)
+        for col in range(n_cols):
+            yield solve1(grid, start_loc=(0, col), start_direction=Direction.DOWN)
+            yield solve1(grid, start_loc=(last_row, col), start_direction=Direction.UP)
+    data = list(gen_all())
+    return max(data)
+
+
+
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_)
     pprint(answer)
 
 
