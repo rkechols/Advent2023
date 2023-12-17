@@ -1,4 +1,5 @@
 import heapq
+from datetime import datetime
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -50,7 +51,7 @@ class State(NamedTuple):
         return self.loc, self.prev_direction, self.n_straight
 
 
-Key = tuple[int, int]
+Key = int
 
 
 T = TypeVar("T")
@@ -150,10 +151,8 @@ class Solver:
         bound = state.total_so_far + manhattan
         return bound
 
-    @cache
     def key(self, state: State) -> Key:
-        manhattan = self.manhattan(state.loc)
-        return manhattan, state.total_so_far
+        return state.total_so_far
 
     def solve(self) -> int:
         best = None
