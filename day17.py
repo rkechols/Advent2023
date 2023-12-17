@@ -1,5 +1,4 @@
 import heapq
-from datetime import datetime
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -10,7 +9,10 @@ import numpy as np
 
 INPUT_FILE_PATH = Path("input.txt")
 
+MAX_GRID_VAL = 9
 N_STRAIGHT_LIMIT = 3
+ULTRA_N_STRAIGHT_MIN = 4
+ULTRA_N_STRAIGHT_LIMIT = 10
 
 
 def read_input() -> np.ndarray:
@@ -30,10 +32,16 @@ class Direction(Enum):
     def opposite(self) -> "Direction":
         return type(self)(tuple(-1 * d for d in self.value))
 
-    def next_direcion_options(self, n_straight: int) -> set["Direction"]:
+    def next_direcion_options(self, n_straight: int, *, ultra: bool) -> set["Direction"]:
+        if ultra:
+            if n_straight < ULTRA_N_STRAIGHT_MIN:
+                return {self}
+            n_straight_max = ULTRA_N_STRAIGHT_LIMIT
+        else:
+            n_straight_max = N_STRAIGHT_LIMIT
         options = set(type(self))  # all directions
         options.discard(self.opposite())  # no u-turns
-        if n_straight >= N_STRAIGHT_LIMIT:
+        if n_straight >= n_straight_max:
             options.discard(self)  # can't keep going the same direction
         return options
 
@@ -102,8 +110,8 @@ class Solver:
             total_so_far=total_so_far,
         )
 
-    def gen_possible_steps(self, state: State) -> Iterable[State]:
-        for next_direction in state.prev_direction.next_direcion_options(state.n_straight):
+    def gen_possible_steps(self, state: State, *, ultra: bool) -> Iterable[State]:
+        for next_direction in state.prev_direction.next_direcion_options(state.n_straight, ultra=ultra):
             try:
                 new_sol = self.step(state, next_direction)
                 if not all(0 <= d < limit for d, limit in zip(new_sol.loc, self.grid.shape)):
@@ -124,20 +132,22 @@ class Solver:
         score = manhattan + offset_penalty
         return score
 
-    def step_greedy(self, state: State) -> State:
-        best_new_sol = None
+    def step_greedy(self, state: State, *, ultra: bool) -> State | None:
+        best_new_state = None
         best_score = None
-        for new_sol in self.gen_possible_steps(state):
-            this_score = self.loc_score(new_sol.loc)
+        for new_state in self.gen_possible_steps(state, ultra=ultra):
+            this_score = self.loc_score(new_state.loc)
             if best_score is None or this_score < best_score:
                 best_score = this_score
-                best_new_sol = new_sol
-        return best_new_sol
+                best_new_state = new_state
+        return best_new_state
 
-    def solve_greedy(self, state: State) -> int:
+    def solve_greedy(self, state: State, *, ultra: bool) -> int | None:
         seen = set()
         while state.loc != self.target:
-            state = self.step_greedy(state)
+            state = self.step_greedy(state, ultra=ultra)
+            if state is None:
+                return None
             # watch for repeated movements
             key = state.dict_key()
             if key in seen:
@@ -154,8 +164,8 @@ class Solver:
     def key(self, state: State) -> Key:
         return state.total_so_far
 
-    def solve(self) -> int:
-        best = None
+    def solve(self, *, ultra: bool = False) -> int:
+        best = sum(self.target) * MAX_GRID_VAL
         p_queue = PriorityQueue(key=self.key)
         dijk: dict[tuple, int] = {}
         for direction in (Direction.RIGHT, Direction.DOWN):
@@ -167,8 +177,8 @@ class Solver:
                 total_so_far=self.grid[loc],
             )  # technically should check if this has reached the target...
             dijk[state.dict_key()] = state.total_so_far
-            upper_bound = self.solve_greedy(state)
-            if best is None or upper_bound < best:
+            upper_bound = self.solve_greedy(state, ultra=ultra)
+            if upper_bound is not None and (best is None or upper_bound < best):
                 best = upper_bound
             p_queue.heappush(state)
         while len(p_queue) > 0:
@@ -176,13 +186,15 @@ class Solver:
             if state.total_so_far > dijk.get(state.dict_key(), float("inf")) \
                     or self.lower_bound(state) >= best:
                 continue
-            for next_state in self.gen_possible_steps(state):
+            for next_state in self.gen_possible_steps(state, ultra=ultra):
                 state_key = next_state.dict_key()
                 if next_state.total_so_far >= dijk.get(state_key, float("inf")):
                     continue  # something else has been here already, but this proposed path is no better
                 dijk[state_key] = next_state.total_so_far
                 lower_bound = self.lower_bound(next_state)
-                if next_state.loc == self.target:  # found a way to get to the target
+                if next_state.loc == self.target and (
+                    not ultra or (ultra and next_state.n_straight >= ULTRA_N_STRAIGHT_MIN)
+                ):  # found a way to get to the target
                     # lower_bound is its actual score too
                     best = min(best, lower_bound)
                     continue
@@ -196,6 +208,8 @@ def main():
     input_ = read_input()
     solver = Solver(input_)
     answer = solver.solve()
+    pprint(answer)
+    answer = solver.solve(ultra=True)
     pprint(answer)
 
 
