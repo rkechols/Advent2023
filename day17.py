@@ -113,13 +113,13 @@ class Solver:
     def gen_possible_steps(self, state: State, *, ultra: bool) -> Iterable[State]:
         for next_direction in state.prev_direction.next_direcion_options(state.n_straight, ultra=ultra):
             try:
-                new_sol = self.step(state, next_direction)
-                if not all(0 <= d < limit for d, limit in zip(new_sol.loc, self.grid.shape)):
+                new_state = self.step(state, next_direction)
+                if not all(0 <= d < limit for d, limit in zip(new_state.loc, self.grid.shape)):
                     raise IndexError("out of bounds (sneaky)")
             except IndexError:
                 continue  # stay in-bounds
             else:
-                yield new_sol
+                yield new_state
 
     @cache
     def manhattan(self, loc: tuple[int, int]) -> int:
