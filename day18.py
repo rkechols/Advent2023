@@ -1,39 +1,41 @@
-from pathlib import Path
-import re
 import itertools
+import re
+from enum import Enum
+from pathlib import Path
 from pprint import pprint
 from typing import Self
-from enum import Enum
+
+INPUT_FILE_PATH = Path("input.txt")
 
 
 class Direction(Enum):
-    UP = (-1, 0)
-    LEFT = (0, -1)
-    DOWN = (1, 0)
-    RIGHT = (0, 1)
+    RIGHT = (1, 0)
+    DOWN = (0, -1)
+    LEFT = (-1, 0)
+    UP = (0, 1)
 
     @classmethod
     def from_letter(cls, s: str) -> Self:
-        if s == "U":
-            return cls.UP
-        if s == "L":
-            return cls.LEFT
-        if s == "D":
-            return cls.DOWN
         if s == "R":
             return cls.RIGHT
+        if s == "D":
+            return cls.DOWN
+        if s == "L":
+            return cls.LEFT
+        if s == "U":
+            return cls.UP
         raise ValueError(s)
 
     @classmethod
     def from_hex(cls, s: str) -> Self:
-        if s == "3":
-            return cls.UP
-        if s == "2":
-            return cls.LEFT
-        if s == "1":
-            return cls.DOWN
         if s == "0":
             return cls.RIGHT
+        if s == "1":
+            return cls.DOWN
+        if s == "2":
+            return cls.LEFT
+        if s == "3":
+            return cls.UP
         raise ValueError(s)
 
     def shift(self, loc: tuple[int, int], n: int) -> tuple[int, int]:
@@ -41,9 +43,8 @@ class Direction(Enum):
         new_loc = tuple(d + s for d, s in zip(loc, shift))
         return new_loc
 
-Input = list[tuple[Direction, int, str]]
 
-INPUT_FILE_PATH = Path("input.txt")
+Input = list[tuple[Direction, int, str]]
 
 
 def read_input() -> Input:
@@ -51,7 +52,7 @@ def read_input() -> Input:
     with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
         for line in f:
             # parse line
-            match = re.fullmatch(r"([RULD]) (\d+) \(#([0-9a-f]{6})\)", line.strip())
+            match = re.fullmatch(r"([RDLU]) (\d+) \(#([0-9a-f]{6})\)", line.strip())
             direction, num, color = match.groups()
             # reformat and save
             direction = Direction.from_letter(direction)
@@ -60,23 +61,24 @@ def read_input() -> Input:
     return data
 
 
-def solve(instructions: list[tuple[Direction, int]]) -> float:
+def solve(instructions: list[tuple[Direction, int]]) -> int:
     loc = (0, 0)
     vertices = [loc]
     for direction, n in instructions:
         loc = direction.shift(loc, n)
         vertices.append(loc)
-    assert loc == (0, 0), "loop expected"
+    assert loc == (0, 0), "expected a closed loop"
     # calculate area
-    area = abs(sum(
-        (x1 * y2) - (x2 * y1)
+    sum_of_parallelogram_areas = abs(sum(
+        (x1 * y2) - (x2 * y1)  # signed magnitude of the cross-product of the two vectors
         for (x1, y1), (x2, y2) in itertools.pairwise(vertices)
-    )) // 2  # guaranteed to be even before dividing
+    ))   # guaranteed to be an even integer
+    area = sum_of_parallelogram_areas // 2
     # area is calculated as if using center-points of each cell of the array;
-    # we need to pad the area by a margin of 0.5 on all sides
-    perimeter = sum(n for _, n in instructions)  # guaranteed to be even
-    border_area = (perimeter // 2) + 1  # +1 is for the corners
-    total_area = area + border_area
+    #   we need to pad the area by a margin of 0.5 on all sides
+    perimeter = sum(n for _, n in instructions)  # guaranteed to be an even integer
+    padding_area = (perimeter // 2) + 1  # +1 is for the corners
+    total_area = area + padding_area
     return total_area
 
 
