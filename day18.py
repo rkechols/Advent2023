@@ -1,6 +1,6 @@
 from pathlib import Path
-import numpy as np
 import re
+import itertools
 from pprint import pprint
 from typing import Self
 from enum import Enum
@@ -24,8 +24,21 @@ class Direction(Enum):
             return cls.RIGHT
         raise ValueError(s)
 
-    def shift(self, loc: tuple[int, int]) -> tuple[int, int]:
-        new_loc = tuple(d + s for d, s in zip(loc, self.value))
+    @classmethod
+    def from_hex(cls, s: str) -> Self:
+        if s == "3":
+            return cls.UP
+        if s == "2":
+            return cls.LEFT
+        if s == "1":
+            return cls.DOWN
+        if s == "0":
+            return cls.RIGHT
+        raise ValueError(s)
+
+    def shift(self, loc: tuple[int, int], n: int) -> tuple[int, int]:
+        shift = tuple(s * n for s in self.value)
+        new_loc = tuple(d + s for d, s in zip(loc, shift))
         return new_loc
 
 Input = list[tuple[Direction, int, str]]
@@ -47,53 +60,53 @@ def read_input() -> Input:
     return data
 
 
-def solve(input_: Input) -> int:
-    dug = set()
+def solve(instructions: list[tuple[Direction, int]]) -> float:
     loc = (0, 0)
-    for direction, n, color in input_:
-        for _ in range(n):
-            loc = direction.shift(loc)
-            dug.add(loc)
+    vertices = [loc]
+    for direction, n in instructions:
+        loc = direction.shift(loc, n)
+        vertices.append(loc)
     assert loc == (0, 0), "loop expected"
-    # figure out bounds
-    dug_np = np.array(list(dug))
-    top, bottom = dug_np[:, 0].min(), dug_np[:, 0].max()
-    left, right = dug_np[:, 1].min(), dug_np[:, 1].max()
-    # try finding all cells internal to the dig loop
-    internal = set()
-    external = set()
-    for loc in dug:
-        for direction in Direction:
-            search_start = direction.shift(loc)
-            if any(search_start in set_known for set_known in (dug, internal, external)):
-                continue
-            to_search = {search_start}
-            searched = set()
-            went_out_of_bounds = False
-            while len(to_search) > 0:
-                loc_searching = to_search.pop()
-                searched.add(loc_searching)
-                if not (top <= loc_searching[0] <= bottom and left <= loc_searching[1] <= right):
-                    # condsidered "out of bounds"; this search is certainly not bounded by the dig loop
-                    went_out_of_bounds = True
-                    searched.update(to_search)
-                    break
-                for search_direction in Direction:
-                    new_loc_searching = search_direction.shift(loc_searching)
-                    if any(new_loc_searching in set_dont_search for set_dont_search in (dug, searched, to_search)):
-                        continue
-                    to_search.add(new_loc_searching)
-            if went_out_of_bounds:
-                external.update(searched)
-            else:
-                internal.update(searched)
-    all_dug = dug | internal
-    return len(all_dug)
+    # calculate area
+    area = abs(sum(
+        (x1 * y2) - (x2 * y1)
+        for (x1, y1), (x2, y2) in itertools.pairwise(vertices)
+    )) // 2  # guaranteed to be even before dividing
+    # area is calculated as if using center-points of each cell of the array;
+    # we need to pad the area by a margin of 0.5 on all sides
+    perimeter = sum(n for _, n in instructions)  # guaranteed to be even
+    border_area = (perimeter // 2) + 1  # +1 is for the corners
+    total_area = area + border_area
+    return total_area
+
+
+def solve1(input_: Input) -> int:
+    instructions = [
+        (direction, n)
+        for direction, n, _ in input_
+    ]
+    return solve(instructions)
+
+
+def hex_to_instruction(hex: str) -> tuple[Direction, int]:
+    dist = int(hex[:-1], base=16)
+    direction = Direction.from_hex(hex[-1])
+    return direction, dist
+
+
+def solve2(input_: Input) -> int:
+    instructions = [
+        hex_to_instruction(hex)
+        for *_, hex in input_
+    ]
+    return solve(instructions)
 
 
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_)
     pprint(answer)
 
 
