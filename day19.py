@@ -1,12 +1,11 @@
+import dataclasses
 import math
-import copy
-from collections import defaultdict
 import re
-from dataclasses import dataclass
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from pprint import pprint
-from typing import Generator, Iterable, Self, cast
+from typing import Self
 
 INPUT_FILE_PATH = Path("input.txt")
 
@@ -15,7 +14,7 @@ ACCEPT = "A"
 REJECT = "R"
 
 
-@dataclass
+@dataclasses.dataclass(frozen=True)
 class Part:
     x: int
     m: int
@@ -43,7 +42,7 @@ class CondOperator(Enum):
             raise ValueError(self)
 
 
-@dataclass
+@dataclasses.dataclass
 class Condition:
     attribute: str
     cond_op: CondOperator
@@ -107,7 +106,7 @@ Range = tuple[int, int]  # inclusive on both ends
 ATTRIBUTE_START_RANGE: Range = (1, 4000)
 
 
-@dataclass
+@dataclasses.dataclass(frozen=True)
 class PartRange:
     x: Range
     m: Range
@@ -115,7 +114,7 @@ class PartRange:
     s: Range
 
     def split(self, condition: Condition) -> tuple[Self | None, Self | None]:
-        relevant_range = cast(Range, getattr(self, condition.attribute))
+        relevant_range: Range = getattr(self, condition.attribute)
         n_bounds_in_condition = sum(
             condition.satisfied_by(bound)
             for bound in relevant_range
@@ -132,10 +131,8 @@ class PartRange:
                 new_range_in = (condition.cond_val + 1, high)
             else:
                 raise ValueError(condition.cond_op)
-            part_range_in = copy.deepcopy(self)
-            setattr(part_range_in, condition.attribute, new_range_in)
-            part_range_out = copy.deepcopy(self)
-            setattr(part_range_out, condition.attribute, new_range_out)
+            part_range_in = dataclasses.replace(self, **{condition.attribute: new_range_in})
+            part_range_out = dataclasses.replace(self, **{condition.attribute: new_range_out})
             return part_range_in, part_range_out
         elif n_bounds_in_condition == 2:  # total overlap
             return self, None
@@ -149,34 +146,19 @@ class PartRange:
         )
 
 
-class RangeManager:
-    def __init__(self):
-        self.data: list[PartRange] = []
-
-    def __len__(self) -> int:
-        return len(self.data)
-
-    def add(self, val: PartRange):
-        # TODO: check for intersections
-        self.data.append(val)
-
-    def __iter__(self) -> Generator[PartRange, None, None]:
-        yield from self.data
-
-
 def solve2(workflows: dict[str, Workflow]) -> int:
-    workflow_ranges = defaultdict(RangeManager)
+    workflow_ranges: dict[str, set[PartRange]] = defaultdict(set)
     workflow_ranges[WORKFLOW_START].add(PartRange(
         x=ATTRIBUTE_START_RANGE,
         m=ATTRIBUTE_START_RANGE,
         a=ATTRIBUTE_START_RANGE,
         s=ATTRIBUTE_START_RANGE,
     ))
-    accepted = RangeManager()
+    accepted: set[PartRange] = set()
     while len(workflow_ranges) > 0:
         workflow_name, ranges = workflow_ranges.popitem()
         rules, default = workflows[workflow_name]
-        resolved = defaultdict(RangeManager)
+        resolved: dict[str, set[PartRange]] = defaultdict(set)
         for part_range in ranges:
             range_leftover = part_range
             for condition, dest in rules:
@@ -189,13 +171,11 @@ def solve2(workflows: dict[str, Workflow]) -> int:
                 resolved[default].add(range_leftover)
         for dest, new_part_ranges in resolved.items():
             if dest == ACCEPT:
-                for new_part_range in new_part_ranges:
-                    accepted.add(new_part_range)
+                accepted.update(new_part_ranges)
             elif dest == REJECT:
                 continue  # discard
             else:
-                for new_part_range in new_part_ranges:
-                    workflow_ranges[dest].add(new_part_range)
+                workflow_ranges[dest].update(new_part_ranges)
     # total it up
     return sum(
         part_range.count()
