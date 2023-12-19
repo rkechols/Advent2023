@@ -1,8 +1,12 @@
-from pathlib import Path
+import math
+import copy
+from collections import defaultdict
 import re
 from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
 from pprint import pprint
-from typing import Self
+from typing import Generator, Iterable, Self, cast
 
 INPUT_FILE_PATH = Path("input.txt")
 
@@ -26,14 +30,27 @@ class Part:
         return self.x + self.m + self.a + self.s
 
 
+class CondOperator(Enum):
+    LT = "<"
+    GT = ">"
+
+    def eval(self, left: int, right: int) -> bool:
+        if self == self.LT:
+            return left < right
+        elif self == self.GT:
+            return left > right
+        else:
+            raise ValueError(self)
+
+
 @dataclass
 class Condition:
     attribute: str
-    cond_str: str
+    cond_op: CondOperator
+    cond_val: int
 
-    def satisfied_by(self, p: Part) -> bool:
-        value = getattr(p, self.attribute)
-        return eval(f"{value!r}{self.cond_str}")
+    def satisfied_by(self, value: int) -> bool:
+        return self.cond_op.eval(value, self.cond_val)
 
 
 Workflow = tuple[list[tuple[Condition, str]], str]
@@ -52,8 +69,11 @@ def read_input() -> Input:
         name, steps_raw, default = re.fullmatch(r"(\w+)\{(.+),(\w+)\}", workflow_raw).groups()
         steps = []
         for step_raw in steps_raw.split(","):
-            attribute, cond_str, dest = re.fullmatch(r"([xmas])([^:]{2,}):(\w+)", step_raw).groups()
-            steps.append((Condition(attribute=attribute, cond_str=cond_str), dest))
+            attribute, cond_op, cond_val, dest = re.fullmatch(r"([xmas])([<>])(\d+):(\w+)", step_raw).groups()
+            steps.append((
+                Condition(attribute=attribute, cond_op=CondOperator(cond_op), cond_val=int(cond_val)),
+                dest,
+            ))
         workflows[name] = (steps, default)
     # parse parts
     parts = [
@@ -63,7 +83,7 @@ def read_input() -> Input:
     return workflows, parts
 
 
-def solve(input_: Input) -> int:
+def solve1(input_: Input) -> int:
     workflows, parts = input_
     total = 0
     for part in parts:
@@ -71,7 +91,7 @@ def solve(input_: Input) -> int:
         while workflow_name not in (ACCEPT, REJECT):
             rules, default = workflows[workflow_name]
             for condition, dest in rules:
-                if condition.satisfied_by(part):
+                if condition.satisfied_by(getattr(part, condition.attribute)):
                     workflow_name = dest
                     break
             else:
@@ -82,9 +102,112 @@ def solve(input_: Input) -> int:
     return total
 
 
+Range = tuple[int, int]  # inclusive on both ends
+
+ATTRIBUTE_START_RANGE: Range = (1, 4000)
+
+
+@dataclass
+class PartRange:
+    x: Range
+    m: Range
+    a: Range
+    s: Range
+
+    def split(self, condition: Condition) -> tuple[Self | None, Self | None]:
+        relevant_range = cast(Range, getattr(self, condition.attribute))
+        n_bounds_in_condition = sum(
+            condition.satisfied_by(bound)
+            for bound in relevant_range
+        )
+        if n_bounds_in_condition == 0:  # no overlap
+            return None, self
+        elif n_bounds_in_condition == 1:  # partial overlap
+            low, high = relevant_range
+            if condition.cond_op == CondOperator.LT:
+                new_range_in = (low, condition.cond_val - 1)
+                new_range_out = (condition.cond_val, high)
+            elif condition.cond_op == CondOperator.GT:
+                new_range_out = (low, condition.cond_val)
+                new_range_in = (condition.cond_val + 1, high)
+            else:
+                raise ValueError(condition.cond_op)
+            part_range_in = copy.deepcopy(self)
+            setattr(part_range_in, condition.attribute, new_range_in)
+            part_range_out = copy.deepcopy(self)
+            setattr(part_range_out, condition.attribute, new_range_out)
+            return part_range_in, part_range_out
+        elif n_bounds_in_condition == 2:  # total overlap
+            return self, None
+        else:
+            raise ValueError(f"{n_bounds_in_condition=}")
+
+    def count(self) -> int:
+        return math.prod(
+            1 + high - low
+            for low, high in (self.x, self.m, self.a, self.s)
+        )
+
+
+class RangeManager:
+    def __init__(self):
+        self.data: list[PartRange] = []
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def add(self, val: PartRange):
+        # TODO: check for intersections
+        self.data.append(val)
+
+    def __iter__(self) -> Generator[PartRange, None, None]:
+        yield from self.data
+
+
+def solve2(workflows: dict[str, Workflow]) -> int:
+    workflow_ranges = defaultdict(RangeManager)
+    workflow_ranges[WORKFLOW_START].add(PartRange(
+        x=ATTRIBUTE_START_RANGE,
+        m=ATTRIBUTE_START_RANGE,
+        a=ATTRIBUTE_START_RANGE,
+        s=ATTRIBUTE_START_RANGE,
+    ))
+    accepted = RangeManager()
+    while len(workflow_ranges) > 0:
+        workflow_name, ranges = workflow_ranges.popitem()
+        rules, default = workflows[workflow_name]
+        resolved = defaultdict(RangeManager)
+        for part_range in ranges:
+            range_leftover = part_range
+            for condition, dest in rules:
+                range_match, range_leftover = range_leftover.split(condition)
+                if range_match is not None:
+                    resolved[dest].add(range_match)
+                if range_leftover is None:
+                    break
+            else:  # ran out of rules, but range_leftover is still not None
+                resolved[default].add(range_leftover)
+        for dest, new_part_ranges in resolved.items():
+            if dest == ACCEPT:
+                for new_part_range in new_part_ranges:
+                    accepted.add(new_part_range)
+            elif dest == REJECT:
+                continue  # discard
+            else:
+                for new_part_range in new_part_ranges:
+                    workflow_ranges[dest].add(new_part_range)
+    # total it up
+    return sum(
+        part_range.count()
+        for part_range in accepted
+    )
+
+
 def main():
     input_ = read_input()
-    answer = solve(input_)
+    answer = solve1(input_)
+    pprint(answer)
+    answer = solve2(input_[0])
     pprint(answer)
 
 
