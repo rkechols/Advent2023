@@ -1,4 +1,5 @@
 from pathlib import Path
+import itertools
 from collections import Counter, deque
 import re
 from abc import ABC
@@ -8,6 +9,7 @@ INPUT_FILE_PATH = Path("input.txt")
 
 BUTTON = "BUTTON"
 BROADCASTER = "broadcaster"
+MAGIC_MACHINE = "rx"
 
 
 class Module(ABC):
@@ -89,29 +91,38 @@ def read_input() -> Input:
         return modules
 
 
-def solve(input_: Input) -> int:
-    _missing = set()
-    n_presses = 1000
+def solve(input_: Input):
+    part1_solved = False
+    part2_solved = False
+    n_presses_target = 1000
     n_pulses = Counter()
-    for _ in range(n_presses):
+    for press_num in itertools.count(1):
         pulses_q = deque()
         pulses_q.append((BUTTON, BROADCASTER, False))
         while len(pulses_q) > 0:
             src, dest_name, pulse = pulses_q.popleft()
+            if dest_name == MAGIC_MACHINE and not pulse:
+                print(f"part 2: {press_num}")
+                part2_solved = True
+                if part1_solved and part2_solved:
+                    return
             n_pulses[pulse] += 1
             dest = input_.get(dest_name)
             if dest is None:
-                _missing.add(dest_name)
                 continue
             new_pulses = dest.pulse(src, pulse)
             pulses_q.extend(new_pulses)
-    return n_pulses[False] * n_pulses[True]
+        if press_num == n_presses_target:
+            prod = n_pulses[False] * n_pulses[True]
+            print(f"part 1: {prod}")
+            part1_solved = True
+            if part1_solved and part2_solved:
+                return
 
 
 def main():
     input_ = read_input()
-    answer = solve(input_)
-    pprint(answer)
+    solve(input_)
 
 
 if __name__ == "__main__":
