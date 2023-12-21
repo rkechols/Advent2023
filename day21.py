@@ -1,6 +1,7 @@
+from enum import Enum
 from pathlib import Path
 from pprint import pprint
-from enum import Enum
+
 import numpy as np
 
 Loc = tuple[int, int]
@@ -35,27 +36,24 @@ def read_input() -> Input:
             row = [s != ROCK for s in line]
             grid.append(row)
     grid = np.array(grid)
+    return grid, start_loc
+
+
+def solve1(input_: Input, n_steps: int) -> int:
+    grid, start_loc = input_
     # pad with all rocks to simplify out-of-bounds checking
     grid = np.pad(grid, 1, constant_values=False)
     start_loc = tuple(d + 1 for d in start_loc)
-    return np.array(grid), start_loc
-
-
-def manhattan(loc1: Loc, loc2: Loc) -> int:
-    return sum(abs(d1 - d2) for d1, d2 in zip(loc1, loc2))
-
-
-def solve(input_: Input, n_steps: int) -> int:
-    grid, start_loc = input_
+    # BFS-like search
     parity = n_steps % 2
-    seen_locs: set[Loc] = set()
-    possible_locs: set[Loc] = set()
-    search_locs = {start_loc}
+    seen_locs: set[Loc] = set()  # don't repeat / backtrack into known territory
+    possible_locs: set[Loc] = set()  # answer
+    search_locs = {start_loc}  # "queue" of current possible positions
     for step_num in range(n_steps + 1):
         if step_num % 2 == parity:
             possible_locs.update(search_locs)
         seen_locs.update(search_locs)
-        search_locs_next = set()
+        search_locs_next = set()  # next layer of possible positions
         for search_loc in search_locs:
             for direction in Direction:
                 neighbor_loc = direction.shift(search_loc)
@@ -65,9 +63,45 @@ def solve(input_: Input, n_steps: int) -> int:
     return len(possible_locs)
 
 
+BoardLoc = tuple[int, int]
+InfiniteLoc = tuple[Loc, BoardLoc]
+
+
+def solve2(input_: Input, n_steps: int) -> int:
+    grid, start_loc = input_
+
+    def wrap_loc(infinite_loc: InfiniteLoc) -> InfiniteLoc:
+        loc, board_loc = infinite_loc
+        loc_new = tuple(d % n for d, n in zip(loc, grid.shape))
+        board_loc_new = tuple(b + (d // n) for d, b, n in zip(loc, board_loc, grid.shape))
+        return loc_new, board_loc_new
+
+    parity = n_steps % 2
+    seen_locs: set[InfiniteLoc] = set()
+    possible_locs: set[InfiniteLoc] = set()
+    search_locs: set[InfiniteLoc] = {(start_loc, (0, 0))}
+    for step_num in range(n_steps + 1):
+        if step_num % 2 == parity:
+            possible_locs.update(search_locs)
+        seen_locs.update(search_locs)
+        search_locs_next = set()
+        for search_loc in search_locs:
+            for direction in Direction:
+                loc, board_loc = search_loc
+                neighbor_loc = direction.shift(loc)
+                neighbor_inf_loc = wrap_loc((neighbor_loc, board_loc))
+                if grid[neighbor_inf_loc[0]] and neighbor_inf_loc not in seen_locs:
+                    search_locs_next.add(neighbor_inf_loc)
+        search_locs = search_locs_next
+    return len(possible_locs)
+
+
 def main():
     input_ = read_input()
-    answer = solve(input_, n_steps=64)
+    answer = solve1(input_, n_steps=64)
+    pprint(answer)
+    # answer = solve2(input_, n_steps=1000)
+    answer = solve2(input_, n_steps=26501365)
     pprint(answer)
 
 
