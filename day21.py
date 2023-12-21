@@ -78,6 +78,7 @@ def solve2(input_: Input, n_steps: int) -> int:
 
     parity = n_steps % 2
     seen_locs: set[InfiniteLoc] = set()
+    min_dist_to_loc = np.full_like(grid, -1, dtype=int)
     possible_locs: set[InfiniteLoc] = set()
     search_locs: set[InfiniteLoc] = {(start_loc, (0, 0))}
     for step_num in range(n_steps + 1):
@@ -86,6 +87,8 @@ def solve2(input_: Input, n_steps: int) -> int:
         seen_locs.update(search_locs)
         search_locs_next = set()
         for search_loc in search_locs:
+            if min_dist_to_loc[search_loc[0]] == -1:
+                min_dist_to_loc[search_loc[0]] = step_num
             for direction in Direction:
                 loc, board_loc = search_loc
                 neighbor_loc = direction.shift(loc)
