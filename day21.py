@@ -67,44 +67,50 @@ BoardLoc = tuple[int, int]
 InfiniteLoc = tuple[Loc, BoardLoc]
 
 
+def wrap(loc: Loc, grid_shape: tuple[int, int]) -> Loc:
+    return tuple(d % n for d, n in zip(loc, grid_shape))
+
+
 def solve2(input_: Input, n_steps: int) -> int:
     grid, start_loc = input_
-
-    def wrap_loc(infinite_loc: InfiniteLoc) -> InfiniteLoc:
-        loc, board_loc = infinite_loc
-        loc_new = tuple(d % n for d, n in zip(loc, grid.shape))
-        board_loc_new = tuple(b + (d // n) for d, b, n in zip(loc, board_loc, grid.shape))
-        return loc_new, board_loc_new
-
-    parity = n_steps % 2
-    seen_locs: set[InfiniteLoc] = set()
-    min_dist_to_loc = np.full_like(grid, -1, dtype=int)
-    possible_locs: set[InfiniteLoc] = set()
-    search_locs: set[InfiniteLoc] = {(start_loc, (0, 0))}
-    for step_num in range(n_steps + 1):
-        if step_num % 2 == parity:
-            possible_locs.update(search_locs)
-        seen_locs.update(search_locs)
-        search_locs_next = set()
-        for search_loc in search_locs:
-            if min_dist_to_loc[search_loc[0]] == -1:
-                min_dist_to_loc[search_loc[0]] = step_num
-            for direction in Direction:
-                loc, board_loc = search_loc
-                neighbor_loc = direction.shift(loc)
-                neighbor_inf_loc = wrap_loc((neighbor_loc, board_loc))
-                if grid[neighbor_inf_loc[0]] and neighbor_inf_loc not in seen_locs:
-                    search_locs_next.add(neighbor_inf_loc)
-        search_locs = search_locs_next
-    return len(possible_locs)
+    seen = set()
+    to_search = {start_loc}
+    while len(to_search) > 0:
+        loc = to_search.pop()
+        seen.add(loc)
+        for direction in Direction:
+            new_loc = wrap(direction.shift(loc), grid.shape)
+            if grid[new_loc] and new_loc not in seen:
+                to_search.add(new_loc)
+    # adjacency matrix
+    index_to_loc = list(seen)
+    n = len(index_to_loc)
+    adjacency = np.empty((n, n), dtype=bool)
+    for i, loc in enumerate(index_to_loc):
+        neighbors = {wrap(direction.shift(loc), grid.shape) for direction in Direction}
+        for j, other_loc in enumerate(index_to_loc):
+            if other_loc in neighbors:
+                adjacency[i, j] = True
+            else:
+                adjacency[i, j] = False
+    adjacency = adjacency.T  # for standard matrix multiplication
+    # adjacency matrix for exactly n_steps down the line
+    adjacency_n_steps = np.linalg.matrix_power(adjacency, n_steps)
+    # see where we can get based on our start position
+    start_state = np.zeros(n, dtype=bool)
+    start_loc_index = index_to_loc.index(start_loc)
+    start_state[start_loc_index] = True
+    final_state = np.matmul(adjacency_n_steps, start_state)
+    answer = final_state.sum()
+    return answer
 
 
 def main():
     input_ = read_input()
     answer = solve1(input_, n_steps=64)
     pprint(answer)
-    # answer = solve2(input_, n_steps=1000)
-    answer = solve2(input_, n_steps=26501365)
+    answer = solve2(input_, n_steps=1000)
+    # answer = solve2(input_, n_steps=26501365)
     pprint(answer)
 
 
