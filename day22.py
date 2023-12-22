@@ -1,50 +1,64 @@
-from collections import defaultdict
-import heapq
 import copy
-import itertools
-from typing import Any, Callable, Generic, Iterable, TypeVar
 import functools
+import heapq
+from collections import defaultdict
+import itertools
 from pathlib import Path
 from pprint import pprint
+from typing import Any, Callable, Generic, Iterable, Sequence, TypeVar
+
+INPUT_FILE_PATH = Path("input.txt")
+
+T = TypeVar("T")
 
 Point = tuple[int, int, int]
 Block = tuple[Point, Point]
 Input = list[Block]
 
-INPUT_FILE_PATH = Path("input.txt")
+
+def min_on_dim(it: Iterable[Sequence[T]], *, dim: int) -> T:
+    return min(seq[dim] for seq in it)
+
+
+def max_on_dim(it: Iterable[Sequence[T]], *, dim: int) -> T:
+    return max(seq[dim] for seq in it)
 
 
 def read_input() -> Input:
     with open(INPUT_FILE_PATH, "r", encoding="utf-8") as f:
         return [
-            tuple(map(lambda point_raw: tuple(map(int, point_raw.split(","))), line.strip().split("~")))
+            tuple(
+                tuple(map(int, point_raw.split(",")))
+                for point_raw in line.strip().split("~")
+            )
             for line in f
         ]
 
 
 def gen_xy_points(block: Block) -> Iterable[tuple[int, int]]:
-    p1, p2 = block
-    for x in range(min(p1[0], p2[0]), 1 + max(p1[0], p2[0])):
-        for y in range(min(p1[1], p2[1]), 1 + max(p1[1], p2[1])):
-            yield (x, y)
+    for xy in itertools.product(*(
+        range(min_on_dim(block, dim=dim), 1 + max_on_dim(block, dim=dim))
+        for dim in range(2)
+    )):
+        yield xy
 
 
-def gen_xyz_points(block: Block) -> Iterable[tuple[int, int]]:
-    p1, p2 = block
-    for x in range(min(p1[0], p2[0]), 1 + max(p1[0], p2[0])):
-        for y in range(min(p1[1], p2[1]), 1 + max(p1[1], p2[1])):
-            for z in range(min(p1[2], p2[2]), 1 + max(p1[2], p2[2])):
-                yield (x, y, z)
+def gen_xyz_points(block: Block) -> Iterable[Point]:
+    for xyz in itertools.product(*(
+        range(min_on_dim(block, dim=dim), 1 + max_on_dim(block, dim=dim))
+        for dim in range(3)
+    )):
+        yield xyz
 
 
 def solve(blocks: Input) -> int:
     # sort block by z-value, ascending
-    blocks = sorted(blocks, key=lambda block: min(p[-1] for p in block))
+    blocks = sorted(blocks, key=functools.partial(min_on_dim, dim=-1))
     # simulate the blocks falling/landing
     xy_highest: dict[tuple[int, int], int] = defaultdict(int)
     blocks_settled = []
     for block in blocks:
-        z_min = min(p[-1] for p in block)
+        z_min = min_on_dim(block, dim=-1)
         # figure out how far to fall before landing on something
         smallest_z_gap = None
         for x, y in gen_xy_points(block):
@@ -63,7 +77,7 @@ def solve(blocks: Input) -> int:
                 for x, y, z in block
             )
         blocks_settled.append(block_new)
-        z_max = max(p[-1] for p in block_new)
+        z_max = max_on_dim(block_new, dim=-1)
         for xy in gen_xy_points(block_new):
             xy_highest[xy] = z_max
     blocks = blocks_settled
@@ -75,17 +89,20 @@ def solve(blocks: Input) -> int:
     # part 1: figure out which settled blocks would cause something to fall if removed
     count = 0
     for block_num, block in enumerate(blocks):
+        z_max = max_on_dim(block, dim=-1)
         block_nums_above = set()
-        for x, y, z in gen_xyz_points(block):
-            if (block_num_above := point_to_block_num.get((x, y, z + 1), block_num)) != block_num:
+        for x, y in gen_xy_points(block):
+            if (block_num_above := point_to_block_num.get((x, y, z_max + 1))) is not None:
                 block_nums_above.add(block_num_above)
         if len(block_nums_above) == 0:
             count += 1
             continue
         for block_num_above in block_nums_above:
+            block_above = blocks[block_num_above]
+            z_min = min_on_dim(block_above, dim=-1)
             if all(
-                point_to_block_num.get((x_up, y_up, z_up - 1), block_num) in (block_num, block_num_above)
-                for x_up, y_up, z_up in gen_xyz_points(blocks[block_num_above])
+                point_to_block_num.get((x_up, y_up, z_min - 1), block_num) in (block_num, block_num_above)
+                for x_up, y_up in gen_xy_points(block_above)
             ):  # all spots below the upper block would be empty upon removal of the block in question
                 break
         else:
@@ -99,7 +116,6 @@ def solve(blocks: Input) -> int:
     yield n_to_fall
 
 
-T = TypeVar("T")
 Key = int
 
 
