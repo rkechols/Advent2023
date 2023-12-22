@@ -116,10 +116,10 @@ def solve(blocks: Input) -> int:
     yield n_to_fall
 
 
-Key = int
+Key = TypeVar("Key")
 
 
-class PriorityQueue(Generic[T]):
+class PriorityQueue(Generic[T, Key]):
     def __init__(self, key: Callable[[T], Key]):
         class _Elem:
             def __init__(self, value: T):
@@ -156,11 +156,13 @@ def solve2(
     blocks = copy.deepcopy(blocks)
     point_to_block_num = copy.deepcopy(point_to_block_num)
     # make a priority queue sorted by z value
-    p_queue: PriorityQueue[int] = PriorityQueue(lambda block_num: min(p[-1] for p in blocks[block_num]))
+    p_queue: PriorityQueue[int, int] = PriorityQueue(lambda block_num: min_on_dim(blocks[block_num], dim=-1))
     queue_blacklist = {block_num_del}  # to help avoid uneccessary computation
-    for x, y, z in gen_xyz_points(block_del):
-        del point_to_block_num[x, y, z]
-        if (block_num_above := point_to_block_num.get((x, y, z + 1), block_num_del)) != block_num_del:
+    for xyz in gen_xyz_points(block_del):
+        del point_to_block_num[xyz]
+    z_max = max_on_dim(block_del, dim=-1)
+    for x, y in gen_xy_points(block_del):
+        if (block_num_above := point_to_block_num.get((x, y, z_max + 1))) is not None:
             if block_num_above not in queue_blacklist:
                 p_queue.heappush(block_num_above)
                 queue_blacklist.add(block_num_above)
@@ -169,7 +171,7 @@ def solve2(
         block_num = p_queue.heappop()
         block = blocks[block_num]
         # list any blocks above the current one
-        z_max = max(p[-1] for p in block)
+        z_max = max_on_dim(block, dim=-1)
         block_nums_above = set()
         for x, y in gen_xy_points(block):
             try:
@@ -213,9 +215,6 @@ def solve2(
                     p_queue.heappush(block_num_above)
                     queue_blacklist.add(block_num_above)
     return count
-
-
-# TODO: where possible, replace gen_xyz_points with gen_xy_points
 
 
 def main():
