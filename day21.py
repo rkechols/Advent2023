@@ -39,6 +39,17 @@ def read_input() -> Input:
     return grid, start_loc
 
 
+def visualize(input_: Input):
+    grid, start_loc = input_
+    canvas = grid.astype(np.uint8) * 255
+    canvas = np.stack([canvas] * 3, axis=-1)
+    canvas[start_loc] = (255, 0, 0)
+    from PIL import Image
+    image = Image.fromarray(canvas)
+    image.save("inputs/day21.png")
+    image.show()
+
+
 def solve1(input_: Input, n_steps: int) -> int:
     grid, start_loc = input_
     # pad with all rocks to simplify out-of-bounds checking
@@ -107,6 +118,7 @@ def solve2(input_: Input, n_steps: int) -> int:
 
 def main():
     input_ = read_input()
+    visualize(input_)
     answer = solve1(input_, n_steps=64)
     pprint(answer)
     answer = solve2(input_, n_steps=1000)
