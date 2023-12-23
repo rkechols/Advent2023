@@ -60,7 +60,14 @@ def find_junctions(grid: np.ndarray) -> set[Loc]:
 
 
 class Solver:
-    def __init__(self, grid: np.ndarray):
+    def __init__(self, grid: np.ndarray, *, ignore_ice: bool = False):
+        self.ignore_ice = ignore_ice
+        if self.ignore_ice:
+            grid = grid.copy()
+            for r, row in enumerate(grid):
+                for c, sym in enumerate(row):
+                    if sym in ICE_TO_DIRECTION:
+                        grid[r, c] = PATH
         self.grid = grid
         # find start loc
         start_row = 0
@@ -167,6 +174,9 @@ class Solver:
 def main():
     input_ = read_input()
     solver = Solver(input_)
+    answer = solver.solve()
+    pprint(answer)
+    solver = Solver(input_, ignore_ice=True)
     answer = solver.solve()
     pprint(answer)
 
