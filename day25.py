@@ -1,4 +1,3 @@
-import copy
 import math
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -9,18 +8,6 @@ import numpy as np
 Input = dict[str, set[str]]
 
 INPUT_FILE_PATH = Path("input.txt")
-
-TO_CUT = [
-    ("qfj", "tbq"),
-    ("qqh", "xbl"),
-    ("dsr", "xzn"),
-]
-
-# TO_CUT = [
-#     ("hfx", "pzl"),
-#     ("bvb", "cmg"),
-#     ("nvd", "jqt"),
-# ]
 
 
 def read_input() -> Input:
@@ -50,46 +37,16 @@ def solve(graph: Input) -> int:
             adjacency[head_index, other_index] = 1
     laplacian = np.identity(n, dtype=int) * np.sum(adjacency, axis=0) - adjacency
     # wizardry:
-    # 1. calculate fiedler vector
+    # 1. calculate fiedler vector (eigenvector of 2nd-smallest eigenvalue of laplacian)
     # 2. use its values as 1-dimensional locations for graph nodes
     # 3. find edges that connect nodes that are on opposite sides of 0
     eig = np.linalg.eig(laplacian)
     eig_sort = np.argsort(eig.eigenvalues)
     eigenvectors = eig.eigenvectors.T[eig_sort]
     fiedler = eigenvectors[1]
-    to_cut = set()
-    for head, others in graph.items():
-        head_index = node_to_index[head]
-        for other in others:
-            other_index = node_to_index[other]
-            f_low, f_high = sorted((fiedler[i] for i in (head_index, other_index)))
-            if f_low <= 0 <= f_high and (other, head) not in to_cut:
-                to_cut.add((head, other))
-    assert len(to_cut) <= 3
-    # cut the edges
-    graph = copy.deepcopy(graph)
-    for node_a, node_b in to_cut:
-        print(f"cutting {node_a}/{node_b}")
-        graph[node_a].remove(node_b)
-        graph[node_b].remove(node_a)
-    # figure out the new graph components
-    seen = set()
-    connected_groups = []
-    for search_node in graph:
-        if search_node in seen:
-            continue
-        to_search = {search_node}
-        connected = set()
-        while len(to_search) > 0:
-            loc = to_search.pop()
-            seen.add(loc)
-            connected.add(loc)
-            for neighbor in graph[loc]:
-                if neighbor not in seen:
-                    to_search.add(neighbor)
-        connected_groups.append(connected)
-    assert len(connected_groups) == 2
-    return math.prod(len(group) for group in connected_groups)
+    # count partition sizes
+    counts = Counter(fiedler >= 0)
+    return math.prod(counts.values())
 
 
 def main():
