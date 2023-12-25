@@ -39,7 +39,7 @@ def solve(graph: Input) -> int:
     # wizardry:
     # 1. calculate fiedler vector (eigenvector of 2nd-smallest eigenvalue of laplacian)
     # 2. use its values as 1-dimensional locations for graph nodes
-    # 3. find edges that connect nodes that are on opposite sides of 0
+    # 3. partition nodes by their signs in the fiedler vector
     eig = np.linalg.eig(laplacian)
     eig_sort = np.argsort(eig.eigenvalues)
     eigenvectors = eig.eigenvectors.T[eig_sort]
