@@ -1,10 +1,10 @@
+import copy
+import math
+from collections import Counter, defaultdict
 from pathlib import Path
-from pyvis.network import Network
-import networkx as nx
-import numpy as np
-from collections import defaultdict
 from pprint import pprint
-from typing import Any
+
+import numpy as np
 
 Input = dict[str, set[str]]
 
@@ -36,46 +36,60 @@ def read_input() -> Input:
     return graph
 
 
-def solve(graph: Input) -> Any:
+def solve(graph: Input) -> int:
     n = len(graph)
-
-    # g = nx.from_dict_of_lists(graph)
-    # net = Network(notebook=True)
-    # net.from_nx(g)
-    # net.show("example.html")
-    # nx.draw_spectral(g)
-
-    # index_to_node = list(graph.keys())
-    # node_to_index = {node: i for i, node in enumerate(index_to_node)}
-    # n = len(index_to_node)
-    # adjacency = np.zeros((n, n), dtype=float)
-    # for head, others in graph.items():
-    #     head_index = node_to_index[head]
-    #     for other in others:
-    #         other_index = node_to_index[other]
-    #         adjacency[head_index, other_index] = 1
-    # laplacian = np.identity(n) * np.sum(adjacency, axis=0) - adjacency
-    # eig = np.linalg.eig(laplacian)
-    # eig_sort = np.argsort(eig.eigenvalues)
-    # eigenvalues = eig.eigenvalues[eig_sort]
-    # eigenvectors = eig.eigenvectors[eig_sort]
-    # print(eig)
-
-    for node_a, node_b in TO_CUT:
+    # assign indices to nodes
+    index_to_node = list(graph.keys())
+    node_to_index = {node: i for i, node in enumerate(index_to_node)}
+    # make adjacency and laplacian matrices
+    adjacency = np.zeros((n, n), dtype=int)
+    for head, others in graph.items():
+        head_index = node_to_index[head]
+        for other in others:
+            other_index = node_to_index[other]
+            adjacency[head_index, other_index] = 1
+    laplacian = np.identity(n, dtype=int) * np.sum(adjacency, axis=0) - adjacency
+    # wizardry:
+    # 1. calculate fiedler vector
+    # 2. use its values as 1-dimensional locations for graph nodes
+    # 3. find edges that connect nodes that are on opposite sides of 0
+    eig = np.linalg.eig(laplacian)
+    eig_sort = np.argsort(eig.eigenvalues)
+    eigenvectors = eig.eigenvectors.T[eig_sort]
+    fiedler = eigenvectors[1]
+    to_cut = set()
+    for head, others in graph.items():
+        head_index = node_to_index[head]
+        for other in others:
+            other_index = node_to_index[other]
+            f_low, f_high = sorted((fiedler[i] for i in (head_index, other_index)))
+            if f_low <= 0 <= f_high and (other, head) not in to_cut:
+                to_cut.add((head, other))
+    assert len(to_cut) <= 3
+    # cut the edges
+    graph = copy.deepcopy(graph)
+    for node_a, node_b in to_cut:
+        print(f"cutting {node_a}/{node_b}")
         graph[node_a].remove(node_b)
         graph[node_b].remove(node_a)
+    # figure out the new graph components
     seen = set()
-    to_search = {next(iter(graph))}
-    while len(to_search) > 0:
-        loc = to_search.pop()
-        seen.add(loc)
-        for neighbor in graph[loc]:
-            if neighbor not in seen:
-                to_search.add(neighbor)
-
-    n_group_a = len(seen)
-    n_group_b = n - n_group_a
-    return n_group_a * n_group_b
+    connected_groups = []
+    for search_node in graph:
+        if search_node in seen:
+            continue
+        to_search = {search_node}
+        connected = set()
+        while len(to_search) > 0:
+            loc = to_search.pop()
+            seen.add(loc)
+            connected.add(loc)
+            for neighbor in graph[loc]:
+                if neighbor not in seen:
+                    to_search.add(neighbor)
+        connected_groups.append(connected)
+    assert len(connected_groups) == 2
+    return math.prod(len(group) for group in connected_groups)
 
 
 def main():
